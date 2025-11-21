@@ -207,7 +207,7 @@ export default function Sidebar() {
               Inicio
             </p>
           )}
-          <NavLink to="/admin" end className={linkCls} title="Dashboard">
+          <NavLink to="/admin/dashboard" className={linkCls} title="Dashboard">
             <span className="text-emerald-700">{Icon.home}</span>
             {!collapsed && <span>Dashboard</span>}
           </NavLink>
@@ -236,7 +236,8 @@ export default function Sidebar() {
             <span className="text-emerald-700">{Icon.file}</span>
             {!collapsed && <span>Avisos</span>}
           </NavLink>
-          <NavLink to="/admin/mapa" className={linkCls} title="Mapa">
+          {/* Mapa de zonas */}
+          <NavLink to="/admin/mapa" className={linkCls} title="Mapa de zonas">
             <span className="text-emerald-700">{Icon.map}</span>
             {!collapsed && <span>Mapa</span>}
           </NavLink>
@@ -250,12 +251,14 @@ export default function Sidebar() {
           )}
           <NavLink
             to="/admin/accesos/qr-personales"
-            className={linkCls}
+            className={({ isActive }) => linkCls(isActive)}
             title="QR personales"
+            end
           >
-            <span className="text-emerald-700">{Icon.qr}</span>
+            <span className="text-emerald-700 text-lg">{Icon.qr}</span>
             {!collapsed && <span>QR personales</span>}
           </NavLink>
+
           <NavLink
             to="/admin/accesos/invitados"
             className={linkCls}
@@ -300,6 +303,7 @@ export default function Sidebar() {
             <span className="text-emerald-700">{Icon.toolbox}</span>
             {!collapsed && <span>Catálogo</span>}
           </NavLink>
+
           <NavLink
             to="/admin/servicios/solicitudes"
             className={linkCls}
@@ -316,14 +320,7 @@ export default function Sidebar() {
               Finanzas
             </p>
           )}
-          <NavLink
-            to="/admin/finanzas/cuentas"
-            className={linkCls}
-            title="Cuentas de usuario"
-          >
-            <span className="text-emerald-700">{Icon.card}</span>
-            {!collapsed && <span>Cuentas de usuario</span>}
-          </NavLink>
+
           <NavLink
             to="/admin/finanzas/cargos-mantenimiento"
             className={linkCls}
@@ -335,14 +332,10 @@ export default function Sidebar() {
           <NavLink
             to="/admin/finanzas/cargos-servicios"
             className={linkCls}
-            title="Cargos servicios"
+            title="Cargos de servicios"
           >
             <span className="text-emerald-700">{Icon.file}</span>
-            {!collapsed && <span>Cargos servicios</span>}
-          </NavLink>
-          <NavLink to="/admin/finanzas/pagos" className={linkCls} title="Pagos">
-            <span className="text-emerald-700">{Icon.money}</span>
-            {!collapsed && <span>Pagos</span>}
+            {!collapsed && <span>Cargos de servicios</span>}
           </NavLink>
         </div>
 
@@ -358,8 +351,9 @@ export default function Sidebar() {
             title="Residentes"
           >
             <span className="text-emerald-700">{Icon.user}</span>
-            {!collapsed && <span>Residentes</span>}
+            {!collapsed && <span>Usuarios</span>}
           </NavLink>
+
           <NavLink
             to="/admin/usuarios/personal"
             className={linkCls}

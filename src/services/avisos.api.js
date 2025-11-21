@@ -1,109 +1,58 @@
 // src/services/avisos.api.js
-// Requiere que ./http.js exporte una instancia axios configurada como: export const http = axios.create({...})
-
 import { http } from "./http";
 
-/**
- * Listado de avisos con filtros y paginación.
- * @param {Object} params
- * @param {number=} params.categoriaId
- * @param {string=} params.q               // texto libre: busca en título/descripcion
- * @param {string|Date=} params.desde      // ISO: '2025-11-01'
- * @param {string|Date=} params.hasta      // ISO
- * @param {number=} params.page            // default 1
- * @param {number=} params.pageSize        // default 10
- * @param {('recientes'|'prioridad')=} params.orden
- */
-async function list(params = {}) {
-  const qp = new URLSearchParams();
-
-  if (params.categoriaId) qp.set("categoriaId", params.categoriaId);
-  if (params.q) qp.set("q", params.q);
-  if (params.desde) qp.set("desde", toIsoDate(params.desde));
-  if (params.hasta) qp.set("hasta", toIsoDate(params.hasta));
-  qp.set("page", params.page ?? 1);
-  qp.set("pageSize", params.pageSize ?? 10);
-  qp.set("orden", params.orden ?? "recientes");
-
-  const { data } = await http.get(`/api/Avisos?${qp.toString()}`);
-  return data; // {items, total, page, pageSize}
+/** Lista “cruda” del backend (array de avisos) */
+async function listRaw() {
+  // GET /api/Avisos → [ { avisoID, usuarioID, categoriaID, titulo, ... } ]
+  return await http.get("/Avisos");
 }
 
-/** Obtiene un aviso por id */
+/** GET /api/Avisos/{id} */
 async function getById(id) {
-  const { data } = await http.get(`/api/Avisos/${id}`);
-  return data;
+  return await http.get(`/Avisos/${id}`);
 }
 
-/**
- * Crea un aviso (ADMIN).
- * @param {Object} payload
- * @param {number} payload.usuarioID
- * @param {number} payload.categoriaID
- * @param {string} payload.titulo
- * @param {string} payload.descripcion
- * @param {string|Date=} payload.fechaEvento
- */
+/** POST /api/Avisos  (crea) */
 async function create(payload) {
   const body = {
-    usuarioID: payload.usuarioID,
-    categoriaID: payload.categoriaID,
+    usuarioID: Number(payload.usuarioID) || 0,
+    categoriaID: Number(payload.categoriaID),
     titulo: payload.titulo?.trim(),
     descripcion: payload.descripcion?.trim(),
     fechaEvento: payload.fechaEvento
-      ? toIsoDateTime(payload.fechaEvento)
+      ? new Date(payload.fechaEvento).toISOString()
       : null,
-    // fechaPublicacion la pone el backend
   };
-  const { data } = await http.post(`/api/Avisos`, body);
-  return data;
+  return await http.post("/Avisos", body);
 }
 
-/**
- * Actualiza un aviso (ADMIN).
- * @param {number} id
- * @param {Object} payload
- */
+/** PUT /api/Avisos  (actualiza sin id en la ruta; incluye avisoID en el body) */
 async function update(id, payload) {
   const body = {
-    categoriaID: payload.categoriaID,
+    avisoID: Number(id),
+    categoriaID: Number(payload.categoriaID),
     titulo: payload.titulo?.trim(),
     descripcion: payload.descripcion?.trim(),
     fechaEvento: payload.fechaEvento
-      ? toIsoDateTime(payload.fechaEvento)
+      ? new Date(payload.fechaEvento).toISOString()
       : null,
   };
-  const { data } = await http.put(`/api/Avisos/${id}`, body);
-  return data;
+  return await http.put("/Avisos", body);
 }
 
-/** Elimina un aviso (ADMIN). */
+/** DELETE /api/Avisos/{id} */
 async function remove(id) {
-  await http.delete(`/api/Avisos/${id}`);
+  await http.del(`/Avisos/${id}`);
   return true;
 }
 
-/** Lista de categorías de Aviso (con prioridad si tu backend la expone). */
+/** GET /api/Avisos/categorias-aviso → [{categoriaID, nombre, (opcional) prioridad}] */
 async function getCategorias() {
-  const { data } = await http.get(`/api/Avisos/categorias-aviso`);
-  return data; // [{categoriaID, nombre, prioridad?}]
-}
-
-/* Helpers */
-function toIsoDate(d) {
-  if (!d) return null;
-  const x = typeof d === "string" ? new Date(d) : d;
-  // solo YYYY-MM-DD
-  return x.toISOString().slice(0, 10);
-}
-function toIsoDateTime(d) {
-  if (!d) return null;
-  const x = typeof d === "string" ? new Date(d) : d;
-  return x.toISOString();
+  return await http.get("/Avisos/categorias-aviso");
 }
 
 export const AvisosAPI = {
-  list,
+  listRaw,
   getById,
   create,
   update,

@@ -81,12 +81,18 @@ export default function Login() {
         userId: detail?.usuarioID ?? hit?.usuarioID,
         tipoUsuarioID,
         nombre: detail?.nombre ?? hit?.nombre ?? inputEmail,
-        token: null, // sin token por ahora
+        token: "dummy-token", // algo truthy por si ProtectedRoute revisa token
       };
 
       if (!s.userId) throw new Error("No se pudo validar la sesión.");
 
-      session.set(s);
+      // usa la API de session
+      if (typeof session.setUser === "function") {
+        session.setUser(s);
+      } else if (typeof session.set === "function") {
+        session.set(s);
+      }
+
       const from = location.state?.from || "/admin/dashboard";
       navigate(from, { replace: true });
     } catch (err) {
