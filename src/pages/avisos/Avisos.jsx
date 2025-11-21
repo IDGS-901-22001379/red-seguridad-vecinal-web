@@ -1,15 +1,17 @@
 // src/pages/avisos/Avisos.jsx
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AvisosAPI } from "../../services/avisos.api";
 import AvisosList from "./AvisosList";
 import AvisoForm from "./AvisoForm";
 
 export default function Avisos() {
   const [cats, setCats] = useState([]); // [{ categoriaID, nombre, prioridad? }]
+  const [raw, setRaw] = useState([]); // lista cruda del backend
+
   const [query, setQuery] = useState({
     page: 1,
     pageSize: 10,
-    orden: "recientes",
+    orden: "recientes", // "recientes" | "prioridad"
     // q?: string
     // categoriaId?: number
   });
@@ -20,28 +22,73 @@ export default function Avisos() {
     page: 1,
     pageSize: 10,
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null); // { ...aviso } o null
+  const [editing, setEditing] = useState(null);
 
-  // Diccionario ID → Nombre para resolver categorías en la tabla
-  const catMap = useMemo(
-    () =>
-      Object.fromEntries(
-        (cats || []).map((c) => [String(c.categoriaID), String(c.nombre)])
-      ),
-    [cats]
-  );
+  // ------ helpers de ordenamiento/filtrado/paginación en cliente ------
+  const catPriority = (catId) => {
+    const c = cats.find((x) => x.categoriaID === catId);
+    // Si el backend expone prioridad, úsala; si no, fallback por nombre:
+    if (c?.prioridad != null) return Number(c.prioridad);
+    const n = (c?.nombre || "").toLowerCase();
+    // Prioridad manual (puedes ajustarla)
+    if (n.includes("alerta")) return 1;
+    if (n.includes("evento")) return 2;
+    return 3; // AvisoGeneral / otros
+  };
 
-  // Cargar categorías desde /api/Avisos/categorias-aviso
+  const applyClientQuery = useCallback(() => {
+    let arr = Array.isArray(raw) ? [...raw] : [];
+
+    // filtro q (título/descripcion)
+    if (query.q?.trim()) {
+      const q = query.q.trim().toLowerCase();
+      arr = arr.filter(
+        (a) =>
+          (a.titulo || "").toLowerCase().includes(q) ||
+          (a.descripcion || "").toLowerCase().includes(q)
+      );
+    }
+
+    // filtro por categoría
+    if (query.categoriaId) {
+      arr = arr.filter(
+        (a) => Number(a.categoriaID) === Number(query.categoriaId)
+      );
+    }
+
+    // orden
+    if (query.orden === "prioridad") {
+      arr.sort(
+        (a, b) =>
+          catPriority(a.categoriaID) - catPriority(b.categoriaID) ||
+          new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion)
+      );
+    } else {
+      // recientes: fechaPublicacion DESC
+      arr.sort(
+        (a, b) => new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion)
+      );
+    }
+
+    // paginación
+    const total = arr.length;
+    const start = (query.page - 1) * query.pageSize;
+    const end = start + query.pageSize;
+    const items = arr.slice(start, end);
+
+    setData({ items, total, page: query.page, pageSize: query.pageSize });
+  }, [raw, query, cats]);
+
+  // ----------------- carga de datos -----------------
   const loadCats = useCallback(async () => {
     try {
       const res = await AvisosAPI.getCategorias();
       const list = Array.isArray(res) ? res : [];
-      // Ordena por prioridad (si viene) y luego por nombre
+      // orden estable: prioridad -> nombre
       const ordenadas = [...list].sort(
         (a, b) =>
           Number(a?.prioridad ?? 99) - Number(b?.prioridad ?? 99) ||
@@ -50,37 +97,41 @@ export default function Avisos() {
       setCats(ordenadas);
     } catch (e) {
       console.error(e);
-      setCats([]); // tolerante: sin categorías no truena
+      setCats([]);
     }
   }, []);
 
-  // Cargar avisos
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await AvisosAPI.list(query);
-      setData(res);
+      const arr = await AvisosAPI.listRaw();
+      setRaw(Array.isArray(arr) ? arr : []);
     } catch (e) {
       setError(e?.message || "Error cargando avisos");
+      setRaw([]);
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, []);
 
   useEffect(() => {
     loadCats();
   }, [loadCats]);
-
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // recalcular vista cuando cambian raw/cats/query
+  useEffect(() => {
+    applyClientQuery();
+  }, [applyClientQuery]);
+
+  // ----------------- acciones -----------------
   const onCreate = () => {
     setEditing(null);
     setShowForm(true);
   };
-
   const onEdit = (item) => {
     setEditing(item);
     setShowForm(true);
@@ -100,7 +151,7 @@ export default function Avisos() {
   const onSubmitForm = async (values) => {
     try {
       if (editing) {
-        await AvisosAPI.update(editing.avisoID, values);
+        await AvisosAPI.update(editing.avisoID, values); // PUT sin id en la ruta
         alert("Aviso actualizado");
       } else {
         await AvisosAPI.create(values);
@@ -125,7 +176,7 @@ export default function Avisos() {
         </button>
       </div>
 
-      {/* Filtros arriba de la tabla */}
+      {/* Filtros */}
       <div className="grid md:grid-cols-4 gap-3 mb-4">
         <input
           className="border rounded-xl p-2"
@@ -135,11 +186,9 @@ export default function Avisos() {
             setQuery((q) => ({ ...q, q: e.target.value, page: 1 }))
           }
         />
-
-        {/* Filtro por categoría */}
         <select
           className="border rounded-xl p-2"
-          value={query.categoriaId ?? ""} // "" = todas
+          value={query.categoriaId ?? ""}
           onChange={(e) =>
             setQuery((q) => ({
               ...q,
@@ -155,7 +204,6 @@ export default function Avisos() {
             </option>
           ))}
         </select>
-
         <select
           className="border rounded-xl p-2"
           value={query.orden}
@@ -166,7 +214,6 @@ export default function Avisos() {
           <option value="recientes">Orden: Recientes</option>
           <option value="prioridad">Orden: Prioridad</option>
         </select>
-
         <select
           className="border rounded-xl p-2"
           value={query.pageSize}
@@ -193,16 +240,14 @@ export default function Avisos() {
         onEdit={onEdit}
         onDelete={onDelete}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
-        catMap={catMap} // ← pasa el mapa a la tabla
       />
 
-      {/* Modal de formulario */}
       {showForm && (
         <AvisoForm
           open={showForm}
           onClose={() => setShowForm(false)}
           onSubmit={onSubmitForm}
-          categorias={cats} // ← categorías para el select del form
+          categorias={cats}
           initial={editing}
         />
       )}
