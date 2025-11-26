@@ -74,7 +74,7 @@ const PagosState = (props) => {
   const getCargosServicios = async (userId) => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/Pagos/cargos/servicios/${userId}`);
+      const res = await axios.get(`${API}/Pagos/cargos/servicio/${userId}`);
 
       dispatch({
         type: GET_CARGOS_SERVICIOS_USER,
@@ -92,7 +92,7 @@ const PagosState = (props) => {
   const getAllCargosServicios = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/Pagos/cargos/servicios`);
+      const res = await axios.get(`${API}/Pagos/cargos/servicio`);
 
       dispatch({
         type: GET_CARGOS_SERVICIOS,
@@ -103,6 +103,19 @@ const PagosState = (props) => {
     } catch (err) {
       console.error(err);
       setError("Error obteniendo todos los cargos de servicios.");
+      return [];
+    }
+  };
+
+  const obtenerTodosLosPagos = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API}/Pagos`); // Necesitas crear este endpoint
+
+      return res.data;
+    } catch (err) {
+      console.error(err);
+      setError("Error obteniendo todos los pagos.");
       return [];
     }
   };
@@ -123,6 +136,7 @@ const PagosState = (props) => {
         getAllCargosMantenimiento,
         getCargosServicios,
         getAllCargosServicios,
+        obtenerTodosLosPagos,
         setError,
         clearError,
       }}
