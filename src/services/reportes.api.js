@@ -1,7 +1,7 @@
 // services/reportes.api.js
 import http from "./http";
 
-const BASE = "/api/Reportes";
+const BASE = "/Reportes";
 
 /**
  * Mapea un reporte del backend a un modelo plano del frontend.

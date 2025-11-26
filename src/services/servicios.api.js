@@ -7,24 +7,24 @@ export const ServiciosAPI = {
 
   // GET /api/Servicios/tipos-servicio
   getTiposServicio() {
-    return http.get("/api/Servicios/tipos-servicio");
+    return http.get("/Servicios/tipos-servicio");
   },
 
   // GET /api/Servicios/tipos-servicio/{id}
   getTipoServicioById(id) {
-    return http.get(`/api/Servicios/tipos-servicio/${id}`);
+    return http.get(`/Servicios/tipos-servicio/${id}`);
   },
 
   // ---------- CATÁLOGO DE SERVICIOS ----------
 
   // GET /api/Servicios/catalogo
   getCatalogoServicios() {
-    return http.get("/api/Servicios/catalogo");
+    return http.get("/Servicios/catalogo");
   },
 
   // GET /api/Servicios/catalogo/{id}
   getServicioById(id) {
-    return http.get(`/api/Servicios/catalogo/${id}`);
+    return http.get(`/Servicios/catalogo/${id}`);
   },
 
   // POST /api/Servicios/catalogo
@@ -38,18 +38,18 @@ export const ServiciosAPI = {
   //   "disponible": boolean
   // }
   crearServicio(data) {
-    return http.post("/api/Servicios/catalogo", data);
+    return http.post("/Servicios/catalogo", data);
   },
 
   // PUT /api/Servicios/catalogo/{id}
   actualizarServicio(id, data) {
-    return http.put(`/api/Servicios/catalogo/${id}`, data);
+    return http.put(`/Servicios/catalogo/${id}`, data);
   },
 
   // PUT /api/Servicios/catalogo/{id}/disponibilidad
   // body: { "disponible": boolean }
   actualizarDisponibilidad(id, disponible) {
-    return http.put(`/api/Servicios/catalogo/${id}/disponibilidad`, {
+    return http.put(`/Servicios/catalogo/${id}/disponibilidad`, {
       disponible,
     });
   },
@@ -58,12 +58,12 @@ export const ServiciosAPI = {
 
   // GET /api/Servicios/personal-mantenimiento
   getPersonalMantenimiento() {
-    return http.get("/api/Servicios/personal-mantenimiento");
+    return http.get("/Servicios/personal-mantenimiento");
   },
 
   // GET /api/Servicios/personal-mantenimiento/{id}
   getPersonalMantenimientoById(id) {
-    return http.get(`/api/Servicios/personal-mantenimiento/${id}`);
+    return http.get(`/Servicios/personal-mantenimiento/${id}`);
   },
 
   // POST /api/Servicios/personal-mantenimiento
@@ -79,7 +79,7 @@ export const ServiciosAPI = {
   //   "notas": string | null
   // }
   crearPersonalMantenimiento(data) {
-    return http.post("/api/Servicios/personal-mantenimiento", data);
+    return http.post("/Servicios/personal-mantenimiento", data);
   },
 
   // ---------- SOLICITUDES DE SERVICIO ----------
@@ -95,28 +95,28 @@ export const ServiciosAPI = {
   //   "horaPreferida": "HH:mm:ss"
   // }
   crearSolicitudServicio(data) {
-    return http.post("/api/Servicios/solicitud", data);
+    return http.post("/Servicios/solicitud", data);
   },
 
   // GET /api/Servicios/solicitudes
   getSolicitudesServicios() {
-    return http.get("/api/Servicios/solicitudes");
+    return http.get("/Servicios/solicitudes");
   },
 
   // GET /api/Servicios/solicitud/{id}
   getSolicitudServicioById(id) {
-    return http.get(`/api/Servicios/solicitud/${id}`);
+    return http.get(`/Servicios/solicitud/${id}`);
   },
 
   // GET /api/Servicios/solicitud/usuario/{usuarioId}
   getSolicitudesServicioByUsuario(usuarioId) {
-    return http.get(`/api/Servicios/solicitud/usuario/${usuarioId}`);
+    return http.get(`/Servicios/solicitud/usuario/${usuarioId}`);
   },
 
   // PUT /api/Servicios/solicitud/{id}/asignar
   // body: { "personaAsignado": number }
   asignarSolicitudServicio(id, personaAsignado) {
-    return http.put(`/api/Servicios/solicitud/${id}/asignar`, {
+    return http.put(`/Servicios/solicitud/${id}/asignar`, {
       personaAsignado,
     });
   },
@@ -124,7 +124,7 @@ export const ServiciosAPI = {
   // PUT /api/Servicios/solicitud/{id}/estado
   // body: { "estado": string }  // Ej: "Pendiente", "En proceso", "Completado", etc.
   actualizarEstadoSolicitud(id, estado) {
-    return http.put(`/api/Servicios/solicitud/${id}/estado`, {
+    return http.put(`/Servicios/solicitud/${id}/estado`, {
       estado,
     });
   },
@@ -132,7 +132,7 @@ export const ServiciosAPI = {
   // PUT /api/Servicios/solicitud/{id}/completar
   // body: { "notasAdmin": string | null }
   completarSolicitudServicio(id, notasAdmin) {
-    return http.put(`/api/Servicios/solicitud/${id}/completar`, {
+    return http.put(`/Servicios/solicitud/${id}/completar`, {
       notasAdmin,
     });
   },

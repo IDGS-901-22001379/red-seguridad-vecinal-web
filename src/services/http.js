@@ -6,7 +6,7 @@ const API_BASE = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5165"
 ).replace(/\/$/, "");
 
-const API_PREFIX = "/api";
+const API_PREFIX = "";
 
 // Une dos segmentos de forma segura
 const join = (a, b) => `${a}${b.startsWith("/") ? "" : "/"}${b}`;

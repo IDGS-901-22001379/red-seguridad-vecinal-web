@@ -1,178 +1,134 @@
-// src/pages/alertas/AdminAlertaDetalle.jsx
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AlertasAPI } from "../../services/alertas.api";
-import ConfirmModal from "../../components/modals/ConfirmModal";
-
-const COLOR = {
-  primary: "#047857",
-  light: "#10B981",
-  action: "#F97316",
-  emergency: "#EF4444",
-  warning: "#FBBF24",
-  text: "#111827",
-  bg: "#F8FAFC",
-};
-
-// Modo prueba: permite atender aunque ya esté atendida
-const MODO_PRUEBA = true;
-
-const isActiva = (r) =>
-  r?.activa === true || r?.activa === 1 || r?.estatus === "Activa";
+import AlertasContext from "@/context/Alertas/AlertasContext";
+import ConfirmModal from "@/components/modals/ConfirmModal";
 
 export default function AdminAlertaDetalle() {
   const { id } = useParams();
-  const nav = useNavigate();
+  const navigate = useNavigate();
+  
+  const {
+    alertaDetalle,
+    loading,
+    error,
+    getAlertaDetalle,
+    atenderAlerta,
+    isAlertaActiva,
+    clearError,
+  } = useContext(AlertasContext);
 
-  const [row, setRow] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState(null);
-
-  // modal de confirmación
-  const [openConfirm, setOpenConfirm] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const data = await AlertasAPI.getById(id);
-        if (!alive) return;
-        setRow(data || null);
-      } catch (e) {
-        setErr(e?.message || "No se pudo cargar la alerta");
-      } finally {
-        setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
+    if (id) {
+      getAlertaDetalle(id);
+    }
   }, [id]);
 
-  function cerrarDetalle() {
-    nav("/admin/alertas", { replace: true });
-  }
+  const cerrarDetalle = () => {
+    navigate("/admin/alertas", { replace: true });
+  };
 
-  async function confirmarAtender() {
-    if (!row) return;
-    await AlertasAPI.updateEstado(row.alertaID, false);
-    setOpenConfirm(false);
-    alert("Atendida ✅");
+  const handleAtender = () => {
+    setShowConfirm(true);
+  };
+
+  const confirmarAtender = async () => {
+    if (!alertaDetalle) return;
+    await atenderAlerta(alertaDetalle.alertaID);
+    setShowConfirm(false);
     cerrarDetalle();
-  }
+  };
 
-  // Mientras carga, mantenemos el overlay para que parezca modal
+  const formatFecha = (fecha) => {
+    return fecha ? new Date(fecha).toLocaleString() : "—";
+  };
+
+  const DetalleItem = ({ label, value }) => (
+    <div className="flex gap-4 py-2">
+      <div className="w-32 text-slate-500 font-medium">{label}</div>
+      <div className="flex-1 font-semibold text-slate-800">{value}</div>
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={cerrarDetalle} />
-
-      {/* Dialog */}
-      <div className="relative w-[96%] max-w-2xl rounded-2xl overflow-hidden shadow-2xl">
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-3 text-white"
-          style={{ backgroundColor: COLOR.light }}
-        >
-          <div className="font-semibold">
-            {row ? `Alerta #${row.alertaID}` : "Detalle de alerta"}
-          </div>
+      
+      <div className="relative w-[95%] max-w-2xl bg-white rounded-2xl shadow-2xl">
+        <div className="bg-red-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
+          <h2 className="text-xl font-bold">
+            {alertaDetalle ? `Alerta #${alertaDetalle.alertaID}` : "Detalle de Alerta"}
+          </h2>
           <button
             onClick={cerrarDetalle}
-            className="w-8 h-8 grid place-items-center rounded hover:bg-white/10"
-            aria-label="Cerrar"
-            title="Cerrar"
+            className="w-8 h-8 grid place-items-center rounded-lg hover:bg-white/10 transition-colors"
           >
-            <span className="text-xl">×</span>
+            <span>×</span>
           </button>
         </div>
 
-        {/* Body */}
-        <div className="bg-white p-5" style={{ backgroundColor: COLOR.bg }}>
-          {loading && <div className="py-8 text-center">Cargando…</div>}
-          {err && <div className="py-8 text-center text-red-700">{err}</div>}
-          {!loading && !err && row && (
-            <div className="space-y-3">
-              <Item
-                k="Fecha/Hora"
-                v={
-                  row.fechaHora ? new Date(row.fechaHora).toLocaleString() : "—"
-                }
-              />
-              <Item
-                k="Usuario"
-                v={row.nombreUsuario || `Usuario #${row.usuarioID}`}
-              />
-              <Item k="Email" v={row.emailUsuario || "—"} />
-              <Item k="Tipo" v={row.tipoUsuario || "—"} />
-              <Item
-                k="Lat/Long"
-                v={`${row.latitud ?? "—"}, ${row.longitud ?? "—"}`}
-              />
-              <div className="flex gap-3">
-                <div className="w-40 text-slate-500">Estado</div>
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
+          {loading && <div className="py-8 text-center text-slate-500">Cargando detalle...</div>}
+          {error && <div className="py-8 text-center text-red-600">{error}</div>}
+          
+          {!loading && !error && alertaDetalle && (
+            <div className="space-y-1">
+              <DetalleItem label="Folio" value={`#${alertaDetalle.alertaID}`} />
+              <DetalleItem label="Fecha/Hora" value={formatFecha(alertaDetalle.fechaHora)} />
+              <DetalleItem label="Vecino" value={alertaDetalle.nombreUsuario || `Usuario #${alertaDetalle.usuarioID}`} />
+              <DetalleItem label="Email" value={alertaDetalle.emailUsuario || "—"} />
+              <DetalleItem label="Tipo" value={alertaDetalle.tipoUsuario || "—"} />
+              <DetalleItem label="Ubicación" value={`${alertaDetalle.latitud || "—"}, ${alertaDetalle.longitud || "—"}`} />
+              
+              <div className="flex gap-4 py-2">
+                <div className="w-32 text-slate-500 font-medium">Estado</div>
                 <div className="flex-1">
-                  <span
-                    className="px-3 py-1 rounded-full text-xs font-semibold text-white"
-                    style={{
-                      backgroundColor: isActiva(row)
-                        ? COLOR.emergency
-                        : COLOR.light,
-                    }}
-                  >
-                    {isActiva(row) ? "Activa" : "Atendida"}
+                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                    isAlertaActiva(alertaDetalle) 
+                      ? "bg-red-100 text-red-700 border border-red-200"
+                      : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                  }`}>
+                    {isAlertaActiva(alertaDetalle) ? "ACTIVA" : "ATENDIDA"}
                   </span>
                 </div>
               </div>
-              {/* Si agregas más campos (descripcion, observaciones), ponlos aquí */}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="bg-white px-5 py-3 flex justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
           <button
             onClick={cerrarDetalle}
-            className="px-4 py-2 rounded font-medium text-white"
-            style={{ backgroundColor: COLOR.light }}
+            className="px-4 py-2 rounded-full bg-slate-600 text-white text-sm font-semibold hover:bg-slate-700 transition-colors"
           >
-            Cancelar
+            Volver
           </button>
-          <button
-            onClick={() => setOpenConfirm(true)}
-            disabled={!MODO_PRUEBA && row && !isActiva(row)}
-            className="px-4 py-2 rounded font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: COLOR.emergency }}
-          >
-            Atender
-          </button>
+          
+          {alertaDetalle && isAlertaActiva(alertaDetalle) && (
+            <button
+              onClick={handleAtender}
+              className="px-4 py-2 rounded-full bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors"
+            >
+              Atender Alerta
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Modal de confirmación (reutilizado) */}
-      {row && (
-        <ConfirmModal
-          open={openConfirm}
-          onClose={() => setOpenConfirm(false)}
-          onConfirm={confirmarAtender}
-          title="¡Atención!"
-          confirmText="Atender"
-          cancelText="Cancelar"
-          message={`¿Estás seguro de marcar la alerta del vecino "${
-            row.nombreUsuario || `Usuario #${row.usuarioID}`
-          }" (Folio ${row.alertaID}) como atendida?`}
-        />
-      )}
-    </div>
-  );
-}
-
-function Item({ k, v }) {
-  return (
-    <div className="flex gap-3">
-      <div className="w-40 text-slate-500">{k}</div>
-      <div className="flex-1 font-medium break-words">{v}</div>
+      <ConfirmModal
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={confirmarAtender}
+        title="Confirmar Atención"
+        confirmText="Atender Alerta"
+        cancelText="Cancelar"
+        message={
+          alertaDetalle 
+            ? `¿Estás seguro de marcar la alerta #${alertaDetalle.alertaID} como atendida?`
+            : ""
+        }
+      />
     </div>
   );
 }

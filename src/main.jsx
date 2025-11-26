@@ -8,16 +8,25 @@ import { AuthProvider } from "./context/AuthContext";
 import MapaState from "./context/Mapa/MapaState";
 import PagosState from "./context/Pagos/PagosState";
 import UsuariosState from "./context/Usuarios/UsuariosState";
+import QRState from "./context/QR/QRState";
+import InvitadosState from "./context/Invitados/InvitadosState";
+import AlertasState from "./context/Alertas/AlertasState";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
       <UsuariosState>
+        <QRState>
+          <InvitadosState>
+            <AlertasState>
         <PagosState>
           <MapaState>
             <RouterProvider router={router} />
           </MapaState>
         </PagosState>
+        </AlertasState>
+        </InvitadosState>
+        </QRState>
       </UsuariosState>
     </AuthProvider>
   </React.StrictMode>
