@@ -1,47 +1,49 @@
 // src/pages/avisos/Avisos.jsx
-import { useEffect, useState, useCallback } from "react";
-import { AvisosAPI } from "../../services/avisos.api";
+import { useEffect, useState, useCallback, useContext, useMemo } from "react";
+import AvisosContext from "@/context/Avisos/AvisosContext";
 import AvisosList from "./AvisosList";
 import AvisoForm from "./AvisoForm";
 
 export default function Avisos() {
-  const [cats, setCats] = useState([]); // [{ categoriaID, nombre, prioridad? }]
-  const [raw, setRaw] = useState([]); // lista cruda del backend
+  const avisosContext = useContext(AvisosContext);
+
+  const {
+    avisos,
+    categorias,
+    loading,
+    error,
+    getAvisos,
+    getCategoriasAviso,
+    crearAviso,
+    actualizarAviso,
+    eliminarAviso,
+    clearError,
+  } = avisosContext;
 
   const [query, setQuery] = useState({
     page: 1,
     pageSize: 10,
-    orden: "recientes", // "recientes" | "prioridad"
-    // q?: string
-    // categoriaId?: number
+    orden: "recientes",
   });
-
-  const [data, setData] = useState({
-    items: [],
-    total: 0,
-    page: 1,
-    pageSize: 10,
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  // ------ helpers de ordenamiento/filtrado/paginación en cliente ------
-  const catPriority = (catId) => {
-    const c = cats.find((x) => x.categoriaID === catId);
-    // Si el backend expone prioridad, úsala; si no, fallback por nombre:
-    if (c?.prioridad != null) return Number(c.prioridad);
-    const n = (c?.nombre || "").toLowerCase();
-    // Prioridad manual (puedes ajustarla)
-    if (n.includes("alerta")) return 1;
-    if (n.includes("evento")) return 2;
-    return 3; // AvisoGeneral / otros
-  };
+  const catPriority = useCallback(
+    (catId) => {
+      const c = categorias.find((x) => x.categoriaID === catId);
+      if (c?.prioridad != null) return Number(c.prioridad);
+      const n = (c?.nombre || "").toLowerCase();
+      if (n.includes("alerta")) return 1;
+      if (n.includes("evento")) return 2;
+      return 3;
+    },
+    [categorias]
+  );
 
-  const applyClientQuery = useCallback(() => {
-    let arr = Array.isArray(raw) ? [...raw] : [];
+  // USAR useMemo EN LUGAR DE useEffect + setState
+  const data = useMemo(() => {
+    let arr = Array.isArray(avisos) ? [...avisos] : [];
 
     // filtro q (título/descripcion)
     if (query.q?.trim()) {
@@ -80,58 +82,45 @@ export default function Avisos() {
     const end = start + query.pageSize;
     const items = arr.slice(start, end);
 
-    setData({ items, total, page: query.page, pageSize: query.pageSize });
-  }, [raw, query, cats]);
+    return { items, total, page: query.page, pageSize: query.pageSize };
+  }, [avisos, query, catPriority]); // catPriority ya es memoizado
 
   // ----------------- carga de datos -----------------
   const loadCats = useCallback(async () => {
     try {
-      const res = await AvisosAPI.getCategorias();
-      const list = Array.isArray(res) ? res : [];
-      // orden estable: prioridad -> nombre
-      const ordenadas = [...list].sort(
-        (a, b) =>
-          Number(a?.prioridad ?? 99) - Number(b?.prioridad ?? 99) ||
-          String(a?.nombre ?? "").localeCompare(String(b?.nombre ?? ""))
-      );
-      setCats(ordenadas);
+      await getCategoriasAviso();
     } catch (e) {
-      console.error(e);
-      setCats([]);
+      console.error("Error cargando categorías:", e);
     }
-  }, []);
+  }, [getCategoriasAviso]);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    setError("");
     try {
-      const arr = await AvisosAPI.listRaw();
-      setRaw(Array.isArray(arr) ? arr : []);
+      await getAvisos();
     } catch (e) {
-      setError(e?.message || "Error cargando avisos");
-      setRaw([]);
-    } finally {
-      setLoading(false);
+      console.error("Error cargando avisos:", e);
     }
-  }, []);
+  }, [getAvisos]);
 
+  // Cargar datos solo una vez al montar
   useEffect(() => {
     loadCats();
-  }, [loadCats]);
-  useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, []); // ← Array de dependencias VACÍO
 
-  // recalcular vista cuando cambian raw/cats/query
+  // Limpiar errores al desmontar
   useEffect(() => {
-    applyClientQuery();
-  }, [applyClientQuery]);
+    return () => {
+      clearError();
+    };
+  }, [clearError]);
 
   // ----------------- acciones -----------------
   const onCreate = () => {
     setEditing(null);
     setShowForm(true);
   };
+
   const onEdit = (item) => {
     setEditing(item);
     setShowForm(true);
@@ -140,9 +129,13 @@ export default function Avisos() {
   const onDelete = async (item) => {
     if (!confirm(`¿Eliminar el aviso "${item.titulo}"?`)) return;
     try {
-      await AvisosAPI.remove(item.avisoID);
-      await loadData();
-      alert("Aviso eliminado");
+      const success = await eliminarAviso(item.avisoID);
+      if (success) {
+        alert("Aviso eliminado");
+        // No necesitas llamar loadData() porque el contexto ya actualiza el estado
+      } else {
+        alert("No se pudo eliminar el aviso");
+      }
     } catch (e) {
       alert(e?.message || "No se pudo eliminar");
     }
@@ -150,24 +143,43 @@ export default function Avisos() {
 
   const onSubmitForm = async (values) => {
     try {
+      let success;
       if (editing) {
-        await AvisosAPI.update(editing.avisoID, values); // PUT sin id en la ruta
-        alert("Aviso actualizado");
+        const updateData = { ...values, avisoID: editing.avisoID };
+        success = await actualizarAviso(updateData);
+        if (success) {
+          alert("Aviso actualizado");
+        }
       } else {
-        await AvisosAPI.create(values);
-        alert("Aviso creado");
+        success = await crearAviso(values);
+        if (success) {
+          alert("Aviso creado");
+        }
       }
-      setShowForm(false);
-      await loadData();
+
+      if (success) {
+        setShowForm(false);
+        // No necesitas llamar loadData() porque el contexto ya actualiza el estado
+      }
     } catch (e) {
       alert(e?.message || "Error al guardar");
     }
   };
 
+  // Crear mapa de categorías para AvisosList
+  const catMap = useMemo(
+    () =>
+      categorias.reduce((acc, cat) => {
+        acc[cat.categoriaID] = cat.nombre;
+        return acc;
+      }, {}),
+    [categorias]
+  );
+
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Avisos (Admin)</h1>
+        <h1 className="text-2xl font-bold">Avisos</h1>
         <button
           onClick={onCreate}
           className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
@@ -175,6 +187,21 @@ export default function Avisos() {
           + Nuevo aviso
         </button>
       </div>
+
+      {/* Mostrar error global */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700">
+          <div className="flex justify-between items-center">
+            <span>{error}</span>
+            <button
+              onClick={clearError}
+              className="text-rose-600 hover:text-rose-800"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="grid md:grid-cols-4 gap-3 mb-4">
@@ -198,7 +225,7 @@ export default function Avisos() {
           }
         >
           <option value="">Todas las categorías</option>
-          {cats.map((c) => (
+          {categorias.map((c) => (
             <option key={c.categoriaID} value={c.categoriaID}>
               {c.nombre}
             </option>
@@ -240,6 +267,7 @@ export default function Avisos() {
         onEdit={onEdit}
         onDelete={onDelete}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
+        catMap={catMap}
       />
 
       {showForm && (
@@ -247,7 +275,7 @@ export default function Avisos() {
           open={showForm}
           onClose={() => setShowForm(false)}
           onSubmit={onSubmitForm}
-          categorias={cats}
+          categorias={categorias}
           initial={editing}
         />
       )}

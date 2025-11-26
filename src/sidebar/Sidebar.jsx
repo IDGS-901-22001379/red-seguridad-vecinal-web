@@ -124,7 +124,7 @@ export default function Sidebar() {
           )}
           <NavLink
             to="/admin/accesos/qr-personales"
-            className={({ isActive }) => linkCls(isActive)}
+            className={linkCls}
             title="QR personales"
             end
           >

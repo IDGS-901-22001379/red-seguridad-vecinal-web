@@ -1,4 +1,3 @@
-// src/pages/avisos/AvisosList.jsx
 export default function AvisosList({
   loading,
   error,
@@ -6,18 +5,9 @@ export default function AvisosList({
   onEdit,
   onDelete,
   onPageChange,
-  catMap = {}, // ← nuevo: diccionario { "2": "Evento", "3": "Alerta", ... }
+  catMap = {},
 }) {
   const { items = [], total = 0, page = 1, pageSize = 10 } = data || {};
-
-  // Normaliza error para decidir qué mostrar
-  const errStatus =
-    error && typeof error === "object" && "status" in error
-      ? error.status
-      : undefined;
-  const hasServerError =
-    (typeof errStatus === "number" && errStatus >= 500) ||
-    (typeof error === "string" && error.length > 0);
 
   const formatDateTime = (v) => (v ? new Date(v).toLocaleString("es-MX") : "—");
 
@@ -27,7 +17,7 @@ export default function AvisosList({
       return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
     if (n.includes("evento"))
       return "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200";
-    return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"; // AvisoGeneral/otros
+    return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
   };
 
   return (
@@ -51,11 +41,11 @@ export default function AvisosList({
                 Cargando…
               </td>
             </tr>
-          ) : hasServerError ? (
+          ) : error ? (
             <tr>
               <td colSpan={7} className="py-3 px-3">
                 <div className="w-full rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2">
-                  <span className="text-xs">Error del servidor</span>
+                  <span className="text-xs">Error: {error}</span>
                 </div>
               </td>
             </tr>
@@ -67,7 +57,6 @@ export default function AvisosList({
             </tr>
           ) : (
             items.map((a, idx) => {
-              // Resolver nombre de categoría de la forma más robusta posible:
               const catName =
                 a.categoriaNombre ||
                 a.categoria?.nombre ||
