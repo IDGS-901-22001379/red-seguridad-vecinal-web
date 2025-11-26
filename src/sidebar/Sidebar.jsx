@@ -243,14 +243,6 @@ export default function Sidebar() {
               Configuración
             </p>
           )}
-          <NavLink
-            to="/admin/config/catalogos"
-            className={linkCls}
-            title="Catálogos & SLA"
-          >
-            <span className="text-emerald-700">{Icon.file}</span>
-            {!collapsed && <span>Catálogos & SLA</span>}
-          </NavLink>
           <NavLink to="/admin/perfil" className={linkCls} title="Perfil">
             <span className="text-emerald-700">{Icon.user}</span>
             {!collapsed && <span>Perfil</span>}

@@ -1,39 +1,36 @@
-// src/app/pages/usuarios/UsuariosList.jsx
-import { useEffect, useState } from "react";
-import { UsuariosAPI } from "../../services/usuarios.api";
+import { useEffect, useState, useContext } from "react";
+import UsuariosContext from "@/context/Usuarios/UsuariosContext";
 import UsuarioForm from "./UsuarioForm";
-import {
-  parseTipoUsuarioID,
-  TIPO_USUARIO_LABEL,
-} from "../../types/tiposUsuario";
 
 export default function UsuariosList() {
-  const [usuarios, setUsuarios] = useState([]);
-  const [tipos, setTipos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [editing, setEditing] = useState(null);
+  const {
+    usuarios,
+    tiposUsuario: tipos,
+    usuarioSeleccionado,
+    error,
+    loading,
+    saving,
+    listarUsuarios,
+    obtenerUsuario,
+    registrarUsuario,
+    actualizarUsuario,
+    eliminarUsuario,
+    reactivarUsuario,
+    obtenerTiposUsuario,
+    clearError,
+  } = useContext(UsuariosContext);
 
-  const [search, setSearch] = useState(""); // 🔍 texto de búsqueda
-  const [filtroTipo, setFiltroTipo] = useState(""); // tipo usuario
-  const [filtroEstado, setFiltroEstado] = useState(""); // activo / inactivo
+  const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("");
 
   const loadData = async () => {
-    setLoading(true);
-    setError("");
+    clearError();
     try {
-      const [list, tiposResp] = await Promise.all([
-        UsuariosAPI.list(),
-        UsuariosAPI.tipos(),
-      ]);
-      setUsuarios(Array.isArray(list) ? list : []);
-      setTipos(Array.isArray(tiposResp) ? tiposResp : []);
+      await Promise.all([listarUsuarios(), obtenerTiposUsuario()]);
     } catch (err) {
       console.error("Error cargando usuarios:", err);
-      setError("No se pudieron cargar los usuarios.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -42,40 +39,54 @@ export default function UsuariosList() {
   }, []);
 
   const handleNew = () => {
-    // form nuevo
     setEditing({});
   };
 
   const handleEdit = async (u) => {
     try {
-      setSaving(true);
-      const detail = await UsuariosAPI.getById(u.usuarioID);
-      setEditing(detail);
+      await obtenerUsuario(u.usuarioID);
     } catch (err) {
       console.error("Error obteniendo detalle de usuario:", err);
-      setError("No se pudo cargar el usuario para edición.");
-    } finally {
-      setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (usuarioSeleccionado) {
+      // Si estamos en modo edición y el usuario seleccionado coincide
+      // O si estamos iniciando una edición
+      if (!editing || editing.usuarioID === usuarioSeleccionado.usuarioID) {
+        setEditing(usuarioSeleccionado);
+      }
+    }
+  }, [usuarioSeleccionado]);
 
   const handleDelete = async (u) => {
     if (
       !window.confirm(
-        `¿Eliminar al usuario "${u.nombre} ${u.apellidoPaterno}"?`
+        `¿Desactivar al usuario "${u.nombre} ${u.apellidoPaterno}"?`
       )
     ) {
       return;
     }
     try {
-      setSaving(true);
-      await UsuariosAPI.delete(u.usuarioID);
-      await loadData();
+      await eliminarUsuario(u.usuarioID);
     } catch (err) {
       console.error("Error eliminando usuario:", err);
-      setError("No se pudo eliminar el usuario.");
-    } finally {
-      setSaving(false);
+    }
+  };
+
+  const handleReactivate = async (u) => {
+    if (
+      !window.confirm(
+        `¿Reactivar al usuario "${u.nombre} ${u.apellidoPaterno}"?`
+      )
+    ) {
+      return;
+    }
+    try {
+      await reactivarUsuario(u.usuarioID);
+    } catch (err) {
+      console.error("Error reactivando usuario:", err);
     }
   };
 
@@ -84,59 +95,62 @@ export default function UsuariosList() {
   };
 
   const handleSubmitForm = async (formData) => {
-    setSaving(true);
-    setError("");
+    clearError();
     try {
       if (formData.usuarioID) {
-        // UPDATE
-        await UsuariosAPI.update({
+        const updateData = {
           usuarioID: formData.usuarioID,
-          numeroCasa: formData.numeroCasa ?? "",
-          calle: formData.calle ?? "",
-          nombre: formData.nombre ?? "",
-          apellidoPaterno: formData.apellidoPaterno ?? "",
-          apellidoMaterno: formData.apellidoMaterno ?? "",
-          telefono: formData.telefono ?? "",
+          numeroCasa: formData.numeroCasa || "",
+          calle: formData.calle || "",
+          nombre: formData.nombre || "",
+          apellidoPaterno: formData.apellidoPaterno || "",
+          apellidoMaterno: formData.apellidoMaterno || "",
+          telefono: formData.telefono || "",
           fechaNacimiento: formData.fechaNacimiento || null,
-          email: formData.email ?? "",
-          password: formData.password || "", // si viene vacío, backend decide
-          numeroTarjeta: formData.numeroTarjeta ?? "",
-          ultimosDigitos:
-            formData.numeroTarjeta?.slice(-4) ?? formData.ultimosDigitos ?? "",
-          fechaVencimiento: formData.fechaVencimiento || null,
-        });
+          email: formData.email || "",
+          password: formData.password || "",
+          fechaVencimiento: formData.fechaVencimiento || "",
+        };
+
+        if (formData.numeroTarjeta && formData.numeroTarjeta.trim() !== "") {
+          updateData.numeroTarjeta = formData.numeroTarjeta;
+          updateData.ultimosDigitos = formData.numeroTarjeta?.slice(-4) || "";
+        } else {
+          updateData.numeroTarjeta = "";
+          updateData.ultimosDigitos = "";
+        }
+
+        console.log("Datos de actualización:", updateData);
+        await actualizarUsuario(updateData);
       } else {
-        // CREATE
-        await UsuariosAPI.register({
-          tipoUsuarioID: formData.tipoUsuarioID,
-          numeroCasa: formData.numeroCasa ?? "",
-          calle: formData.calle ?? "",
-          nombre: formData.nombre ?? "",
-          apellidoPaterno: formData.apellidoPaterno ?? "",
-          apellidoMaterno: formData.apellidoMaterno ?? "",
-          telefono: formData.telefono ?? "",
+        const usuarioData = {
+          tipoUsuarioID: parseInt(formData.tipoUsuarioID) || 1,
+          numeroCasa: formData.numeroCasa || "",
+          calle: formData.calle || "",
+          nombre: formData.nombre || "",
+          apellidoPaterno: formData.apellidoPaterno || "",
+          apellidoMaterno: formData.apellidoMaterno || "",
+          telefono: formData.telefono || "",
           fechaNacimiento: formData.fechaNacimiento || null,
-          email: formData.email ?? "",
+          email: formData.email || "",
           password: formData.password || "Vecinal123!",
-          numeroTarjeta: formData.numeroTarjeta ?? "",
-          fechaVencimiento: formData.fechaVencimiento || null,
-        });
+          numeroTarjeta: formData.numeroTarjeta || "",
+          fechaVencimiento: formData.fechaVencimiento || "",
+        };
+
+        console.log("Datos a enviar al API:", usuarioData);
+        await registrarUsuario(usuarioData);
       }
 
       setEditing(null);
-      await loadData();
     } catch (err) {
       console.error("Error guardando usuario:", err);
-      setError("No se pudo guardar el usuario.");
-    } finally {
-      setSaving(false);
     }
   };
 
-  // 🔍 Filtro combinado: texto + tipo + estado
   const usuariosFiltrados = usuarios.filter((u) => {
-    // texto
     const term = search.trim().toLowerCase();
+
     if (term) {
       const fullText = (
         (u.nombre || "") +
@@ -153,23 +167,22 @@ export default function UsuariosList() {
       )
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, ""); // quitar acentos
+        .replace(/[\u0300-\u036f]/g, "");
 
       const normalizedTerm = term
-        .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
 
       if (!fullText.includes(normalizedTerm)) return false;
     }
 
-    // tipo
     if (filtroTipo) {
-      const tipoId = parseTipoUsuarioID(u.tipoUsuarioID ?? u.tipoUsuario);
-      if (String(tipoId) !== String(filtroTipo)) return false;
+      const tipoUsuario = (u.tipoUsuario || "").toLowerCase().trim();
+      const filtro = filtroTipo.toLowerCase().trim();
+
+      if (tipoUsuario !== filtro) return false;
     }
 
-    // estado
     if (filtroEstado === "activos" && !u.activo) return false;
     if (filtroEstado === "inactivos" && u.activo) return false;
 
@@ -178,7 +191,6 @@ export default function UsuariosList() {
 
   return (
     <div className="p-4">
-      {/* Título */}
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Usuarios</h1>
         <p className="text-sm text-slate-500">
@@ -186,10 +198,8 @@ export default function UsuariosList() {
         </p>
       </div>
 
-      {/* 🔍 Buscador + filtros + botón nuevo en la MISMA línea */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="flex flex-1 flex-wrap gap-2 min-w-[260px]">
-          {/* Buscador */}
           <input
             type="text"
             placeholder="Buscar por nombre, apellido o correo..."
@@ -198,7 +208,6 @@ export default function UsuariosList() {
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          {/* Filtro tipo */}
           <select
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
@@ -206,13 +215,12 @@ export default function UsuariosList() {
           >
             <option value="">Todos los tipos</option>
             {tipos.map((t) => (
-              <option key={t.tipoUsuarioID} value={t.tipoUsuarioID}>
+              <option key={t.tipoUsuarioID} value={t.nombre}>
                 {t.nombre}
               </option>
             ))}
           </select>
 
-          {/* Filtro estado */}
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
@@ -224,7 +232,6 @@ export default function UsuariosList() {
           </select>
         </div>
 
-        {/* Botón nuevo usuario */}
         <button
           type="button"
           onClick={handleNew}
@@ -244,7 +251,6 @@ export default function UsuariosList() {
         <div className="py-10 text-center text-slate-500">Cargando...</div>
       ) : (
         <>
-          {/* Formulario de creación / edición */}
           {editing && (
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-2">
@@ -260,7 +266,6 @@ export default function UsuariosList() {
             </div>
           )}
 
-          {/* Tabla de usuarios */}
           <div className="overflow-x-auto bg-white rounded-xl shadow">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50">
@@ -294,11 +299,7 @@ export default function UsuariosList() {
                   </tr>
                 ) : (
                   usuariosFiltrados.map((u) => {
-                    const tipoId = parseTipoUsuarioID(
-                      u.tipoUsuarioID ?? u.tipoUsuario
-                    );
-                    const tipoLabel =
-                      u.tipoUsuario || TIPO_USUARIO_LABEL[tipoId] || "Sin tipo";
+                    const tipoLabel = u.tipoUsuario || "Sin tipo";
 
                     return (
                       <tr
@@ -329,13 +330,24 @@ export default function UsuariosList() {
                           >
                             Editar
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(u)}
-                            className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-red-300 text-red-700 hover:bg-red-50"
-                          >
-                            Eliminar
-                          </button>
+
+                          {u.activo ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(u)}
+                              className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-red-300 text-red-700 hover:bg-red-50"
+                            >
+                              Eliminar
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleReactivate(u)}
+                              className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            >
+                              Reactivar
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

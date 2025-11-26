@@ -14,11 +14,14 @@ const UsuariosState = ({ children }) => {
     usuarioSeleccionado: null,
     tiposUsuario: [],
     error: null,
+    loading: false,
+    saving: false,
   };
 
   const [state, dispatch] = useReducer(UsuariosReducer, initialState);
 
   const listarUsuarios = async () => {
+    dispatch({ type: USUARIOS_ACTIONS.LOADING });
     try {
       const res = await axios.get(`${API_URL}/Usuarios`);
       dispatch({
@@ -33,8 +36,8 @@ const UsuariosState = ({ children }) => {
     }
   };
 
-  // Obtener usuario por ID
   const obtenerUsuario = async (id) => {
+    dispatch({ type: USUARIOS_ACTIONS.LOADING });
     try {
       const res = await axios.get(`${API_URL}/Usuarios/${id}`);
       dispatch({
@@ -49,32 +52,41 @@ const UsuariosState = ({ children }) => {
     }
   };
 
-  // Registrar usuario
   const registrarUsuario = async (usuario) => {
+    dispatch({ type: USUARIOS_ACTIONS.SAVING });
     try {
       const res = await axios.post(`${API_URL}/Usuarios/register`, usuario);
-
       dispatch({
         type: USUARIOS_ACTIONS.REGISTRAR,
         payload: res.data,
       });
+      return { success: true, data: res.data };
     } catch (err) {
+      const errorMessage =
+        err.response?.data?.error || err.response?.data?.error || err.message;
+
       dispatch({
         type: USUARIOS_ACTIONS.ERROR,
-        payload: err.message,
+        payload: errorMessage,
       });
+
+      return {
+        success: false,
+        error: errorMessage,
+        details: err.response?.data,
+      };
     }
   };
 
-  // Actualizar usuario
   const actualizarUsuario = async (usuario) => {
+    dispatch({ type: USUARIOS_ACTIONS.SAVING });
     try {
       const res = await axios.put(`${API_URL}/Usuarios/update`, usuario);
-
       dispatch({
         type: USUARIOS_ACTIONS.ACTUALIZAR,
         payload: res.data,
       });
+      listarUsuarios();
     } catch (err) {
       dispatch({
         type: USUARIOS_ACTIONS.ERROR,
@@ -83,14 +95,55 @@ const UsuariosState = ({ children }) => {
     }
   };
 
-  // Obtener tipos de usuario
   const obtenerTiposUsuario = async () => {
+    dispatch({ type: USUARIOS_ACTIONS.LOADING });
     try {
       const res = await axios.get(`${API_URL}/Usuarios/tipos-usuario`);
       dispatch({
         type: USUARIOS_ACTIONS.TIPOS_USUARIO,
         payload: res.data,
       });
+    } catch (err) {
+      dispatch({
+        type: USUARIOS_ACTIONS.ERROR,
+        payload: err.message,
+      });
+    }
+  };
+
+  const eliminarUsuario = async (id) => {
+    dispatch({ type: USUARIOS_ACTIONS.SAVING });
+    try {
+      await axios.put(`${API_URL}/Usuarios/desactivar/${id}`, {
+        motivo: "Dado de baja",
+      });
+      dispatch({
+        type: USUARIOS_ACTIONS.ELIMINAR,
+        payload: id,
+      });
+      listarUsuarios();
+    } catch (err) {
+      dispatch({
+        type: USUARIOS_ACTIONS.ERROR,
+        payload: err.message,
+      });
+    }
+  };
+
+  const clearError = () => {
+    dispatch({ type: USUARIOS_ACTIONS.CLEAR_ERROR });
+  };
+
+  const reactivarUsuario = async (id) => {
+    dispatch({ type: USUARIOS_ACTIONS.SAVING });
+    try {
+      const res = await axios.put(`${API_URL}/Usuarios/reactivar/${id}`);
+
+      dispatch({
+        type: USUARIOS_ACTIONS.REACTIVAR,
+        payload: res.data,
+      });
+      listarUsuarios();
     } catch (err) {
       dispatch({
         type: USUARIOS_ACTIONS.ERROR,
@@ -106,12 +159,17 @@ const UsuariosState = ({ children }) => {
         usuarioSeleccionado: state.usuarioSeleccionado,
         tiposUsuario: state.tiposUsuario,
         error: state.error,
+        loading: state.loading,
+        saving: state.saving,
 
         listarUsuarios,
         obtenerUsuario,
         registrarUsuario,
         actualizarUsuario,
+        eliminarUsuario,
+        reactivarUsuario,
         obtenerTiposUsuario,
+        clearError,
       }}
     >
       {children}

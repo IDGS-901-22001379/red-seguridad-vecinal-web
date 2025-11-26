@@ -1,64 +1,55 @@
-// src/app/types/tiposUsuario.js
-
-// IDs oficiales según tu API /Usuarios/tipos-usuario
 export const TIPOS_USUARIO = {
+  USUARIO: 1,
   ADMIN: 2,
-  RESIDENTE: 3,
-  SEGURIDAD: 4,
+  GUARDIA: 3,
 };
 
-// Labels de texto para mostrar en UI
 export const TIPO_USUARIO_LABEL = {
-  [TIPOS_USUARIO.ADMIN]: "Administrador",
-  [TIPOS_USUARIO.RESIDENTE]: "Residente",
-  [TIPOS_USUARIO.SEGURIDAD]: "Seguridad",
+  [TIPOS_USUARIO.USUARIO]: "Usuario",
+  [TIPOS_USUARIO.ADMIN]: "Admin",
+  [TIPOS_USUARIO.GUARDIA]: "Guardia",
 };
 
-/**
- * Normaliza cualquier cosa a un tipoUsuarioID:
- * - 2, 3, 4
- * - "2", "3", "4"
- * - "Administrador", "Residente", "Seguridad"
- * - { tipoUsuarioID: 2 } o { tipoUsuario: "Administrador" }
- */
 export function parseTipoUsuarioID(raw) {
   if (raw == null) return null;
 
-  // Si ya es número
   if (typeof raw === "number") return raw || null;
 
-  // Si viene un objeto (detalle del backend)
   if (typeof raw === "object") {
     return parseTipoUsuarioID(
       raw.tipoUsuarioID ?? raw.tipoUsuario ?? raw.nombre ?? raw.id ?? null
     );
   }
 
-  // Si es string
   if (typeof raw === "string") {
     const t = raw.trim();
     if (!t) return null;
 
-    // Intentar como número "2", "3", "4"
     const num = Number(t);
     if (!Number.isNaN(num)) return num;
 
     // Intentar como texto
     const s = t.toLowerCase();
-    if (s.startsWith("admin")) return TIPOS_USUARIO.ADMIN;
-    if (s.startsWith("resid")) return TIPOS_USUARIO.RESIDENTE;
-    if (s.startsWith("segur")) return TIPOS_USUARIO.SEGURIDAD;
+    if (s.includes("usuario") || s.includes("residente")) return TIPOS_USUARIO.USUARIO;
+    if (s.includes("admin")) return TIPOS_USUARIO.ADMIN;
+    if (s.includes("guardia") || s.includes("seguridad")) return TIPOS_USUARIO.GUARDIA;
   }
 
   return null;
 }
 
-// Helpers rápidos para usar en componentes
+export const esUsuario = (tipo) =>
+  parseTipoUsuarioID(tipo) === TIPOS_USUARIO.USUARIO;
+
 export const esAdmin = (tipo) =>
   parseTipoUsuarioID(tipo) === TIPOS_USUARIO.ADMIN;
 
-export const esResidente = (tipo) =>
-  parseTipoUsuarioID(tipo) === TIPOS_USUARIO.RESIDENTE;
+export const esGuardia = (tipo) =>
+  parseTipoUsuarioID(tipo) === TIPOS_USUARIO.GUARDIA;
 
-export const esSeguridad = (tipo) =>
-  parseTipoUsuarioID(tipo) === TIPOS_USUARIO.SEGURIDAD;
+// Para usar en selects y formularios
+export const OPCIONES_TIPOS_USUARIO = [
+  { value: TIPOS_USUARIO.USUARIO, label: "Usuario" },
+  { value: TIPOS_USUARIO.ADMIN, label: "Admin" },
+  { value: TIPOS_USUARIO.GUARDIA, label: "Guardia" },
+];

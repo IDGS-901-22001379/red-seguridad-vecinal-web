@@ -45,8 +45,8 @@ export default function UsuarioForm({
           ? initial.fechaNacimiento.substring(0, 10)
           : "",
         email: initial.email ?? "",
-        password: "", // para edición, lo dejamos vacío (se puede ignorar)
-        numeroTarjeta: initial.numeroTarjeta ?? "",
+        password: "",
+        numeroTarjeta: "",
         fechaVencimiento: initial.fechaVencimiento
           ? initial.fechaVencimiento.substring(0, 10)
           : "",
@@ -207,13 +207,30 @@ export default function UsuarioForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Número tarjeta</label>
+        <label className="block text-sm font-medium mb-1">
+          Número de tarjeta
+          {form.usuarioID && (
+            <span className="text-xs text-slate-500 ml-1">
+              (dejar vacío para mantener el actual)
+            </span>
+          )}
+        </label>
         <input
           name="numeroTarjeta"
           value={form.numeroTarjeta}
           onChange={handleChange}
           className="w-full border rounded-lg px-3 py-2 text-sm"
+          placeholder={
+            form.usuarioID
+              ? "Ingrese nuevo número solo si desea cambiar"
+              : "Ingrese número de tarjeta"
+          }
         />
+        {form.usuarioID && initial?.ultimosDigitos && (
+          <p className="text-xs text-slate-500 mt-1">
+            Número actual: •••• {initial.ultimosDigitos}
+          </p>
+        )}
       </div>
 
       <div>
@@ -221,11 +238,12 @@ export default function UsuarioForm({
           Fecha vencimiento
         </label>
         <input
-          type="date"
+          type="text"
           name="fechaVencimiento"
           value={form.fechaVencimiento}
           onChange={handleChange}
           className="w-full border rounded-lg px-3 py-2 text-sm"
+          placeholder="MM-YY"
         />
       </div>
 
