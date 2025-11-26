@@ -1,104 +1,35 @@
-// src/pages/auth/Login.jsx
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { UsuariosAPI } from "../../services/usuarios.api";
-import { session } from "../../utils/session";
+import { useAuth } from "@/context/AuthContext";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
+  const { login, loading, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
 
-  // Intenta parsear texto a JSON si es string
-  const safeJson = (x) => {
-    if (x == null) return x;
-    if (typeof x === "string") {
-      const t = x.trim();
-      if (!t) return x;
-      if (t.startsWith("{") || t.startsWith("[")) {
-        try {
-          return JSON.parse(t);
-        } catch {
-          /* ignore */
-        }
-      }
+  useEffect(() => {
+    if (user) {
+      navigate("/admin/dashboard");
     }
-    return x;
-  };
+  }, [user, navigate]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
-    try {
-      // 1) Trae usuarios y normaliza a arreglo (soporta texto o {data:[]})
-      let listResp = await UsuariosAPI.list();
-      listResp = safeJson(listResp);
 
-      const list = Array.isArray(listResp)
-        ? listResp
-        : Array.isArray(listResp?.data)
-        ? listResp.data
-        : [];
+    if (!form.email || !form.password) {
+      setError("Por favor, completa todos los campos");
+      return;
+    }
 
-      if (!Array.isArray(list) || list.length === 0) {
-        throw new Error("Correo no registrado.");
-      }
+    const success = await login(form.email, form.password);
 
-      // 2) Busca por email (case-insensitive + trim)
-      const inputEmail = (form.email || "").trim().toLowerCase();
-      const hit = list.find(
-        (u) => (u.email || "").trim().toLowerCase() === inputEmail
-      );
-      if (!hit) throw new Error("Correo no registrado.");
-
-      // 3) Trae detalle por id (también robusto a texto)
-      let detail = await UsuariosAPI.getById(hit.usuarioID);
-      detail = safeJson(detail);
-
-      // 4) Normaliza el rol (acepta ID o texto "Administrador/Residente/Seguridad")
-      const textToId = (t) => {
-        const s = (t || "").toString().toLowerCase();
-        if (s.startsWith("admin")) return 2;
-        if (s.startsWith("resid")) return 3;
-        if (s.startsWith("segur")) return 4;
-        return null;
-      };
-
-      const tipoUsuarioID =
-        detail?.tipoUsuarioID ??
-        detail?.tipoUsuario?.tipoUsuarioID ??
-        textToId(detail?.tipoUsuario) ??
-        textToId(hit?.tipoUsuario) ??
-        null;
-
-      // 5) Guarda sesión y redirige
-      const s = {
-        raw: detail,
-        userId: detail?.usuarioID ?? hit?.usuarioID,
-        tipoUsuarioID,
-        nombre: detail?.nombre ?? hit?.nombre ?? inputEmail,
-        token: "dummy-token", // algo truthy por si ProtectedRoute revisa token
-      };
-
-      if (!s.userId) throw new Error("No se pudo validar la sesión.");
-
-      // usa la API de session
-      if (typeof session.setUser === "function") {
-        session.setUser(s);
-      } else if (typeof session.set === "function") {
-        session.set(s);
-      }
-
-      const from = location.state?.from || "/admin/dashboard";
-      navigate(from, { replace: true });
-    } catch (err) {
-      setError(err?.message || "No se pudo iniciar sesión");
-    } finally {
-      setLoading(false);
+    if (success) {
+      navigate("/admin/dashboard");
     }
   };
 
@@ -134,7 +65,6 @@ export default function Login() {
             <label htmlFor="usuario" className="block mb-1 font-medium">
               Usuario
             </label>
-            {/* mostramos "Usuario" pero enviamos email */}
             <input
               id="usuario"
               name="usuario"
@@ -156,17 +86,13 @@ export default function Login() {
               id="password"
               name="password"
               type="password"
-              placeholder="Puedes escribir cualquiera por ahora"
+              placeholder="Ingresa tu contraseña"
               className="input"
               autoComplete="current-password"
               required={false}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
-            <p className="text-xs text-slate-500 mt-1">
-              * Temporal: solo validamos el correo; la contraseña no se
-              verifica.
-            </p>
           </div>
 
           <div className="pt-2 flex justify-center">

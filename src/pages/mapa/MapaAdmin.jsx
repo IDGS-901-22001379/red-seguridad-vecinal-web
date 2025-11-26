@@ -1,5 +1,5 @@
 // src/pages/mapa/MapaAdmin.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -9,27 +9,18 @@ import {
   Tooltip,
   useMapEvents,
 } from "react-leaflet";
-import { MapaAPI } from "../../services/mapa.api";
-import { session } from "../../utils/session";
 import MarcadorForm from "./MarcadorForm";
+import { useAuth } from "@/context/AuthContext";
+import MapaContext from "@/context/Mapa/MapaContext";
 
 // Colores por tipo de indicador
 const indicadorConfig = {
-  Peligroso: {
-    color: "#ef4444", // rojo
-    label: "Zona peligrosa",
-  },
-  Alerta: {
-    color: "#f59e0b", // naranja/amarillo
-    label: "Zona de alerta",
-  },
-  Mantenimiento: {
-    color: "#22c55e", // verde
-    label: "Zona de mantenimiento",
-  },
+  Peligroso: { color: "#ef4444", label: "Zona peligrosa" },
+  Alerta: { color: "#f59e0b", label: "Zona de alerta" },
+  Mantenimiento: { color: "#22c55e", label: "Zona de mantenimiento" },
 };
 
-const DEFAULT_CENTER = [19.432608, -99.133209]; // CDMX por defecto
+const DEFAULT_CENTER = [21.116667, -101.683334];
 
 // Radio del círculo según indicador (en metros)
 function getRadius(indicador) {
@@ -56,13 +47,20 @@ function ClickHandler({ onClick }) {
 }
 
 export default function MapaAdmin() {
-  const [marcadores, setMarcadores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { user } = useAuth();
+  const {
+    marcadores,
+    loading,
+    error,
+    getMarcadores,
+    addMarcador,
+    updateMarcador,
+    deleteMarcador,
+    clearError,
+  } = useContext(MapaContext);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [mode, setMode] = useState("create"); // "create" | "edit"
+  const [mode, setMode] = useState("create");
   const [form, setForm] = useState({
     marcadorID: null,
     latitud: "",
@@ -72,23 +70,8 @@ export default function MapaAdmin() {
   });
 
   // -------------- CARGA INICIAL ----------------
-  const loadMarcadores = async () => {
-    try {
-      setLoading(true);
-      const data = await MapaAPI.getAll();
-      const activos = (data || []).filter((m) => m.activo !== false);
-      setMarcadores(activos);
-      setError("");
-    } catch (err) {
-      console.error(err);
-      setError("No se pudieron cargar los marcadores del mapa.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadMarcadores();
+    getMarcadores();
   }, []);
 
   // -------------- MANEJO FORMULARIO ----------------
@@ -117,7 +100,7 @@ export default function MapaAdmin() {
   };
 
   const handleMapClick = (latlng) => {
-    if (!formOpen) return; // solo si el formulario está abierto
+    if (!formOpen) return;
     setForm((prev) => ({
       ...prev,
       latitud: latlng.lat,
@@ -135,69 +118,45 @@ export default function MapaAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    clearError();
 
     const lat = Number(form.latitud);
     const lng = Number(form.longitud);
 
     if (!lat || !lng) {
-      setError(
+      alert(
         "Selecciona una ubicación en el mapa (latitud y longitud válidas)."
       );
       return;
     }
     if (!form.comentario.trim()) {
-      setError("El comentario es obligatorio.");
+      alert("El comentario es obligatorio.");
       return;
     }
 
     try {
-      setSaving(true);
+      const payload = {
+        latitud: lat,
+        longitud: lng,
+        indicador: form.indicador,
+        comentario: form.comentario.trim(),
+      };
 
       if (mode === "create") {
-        // 👇 Intentar obtener usuarioID desde session
-        let usuarioID = null;
-        try {
-          if (typeof session.get === "function") {
-            const s = session.get();
-            usuarioID = s?.usuarioID ?? s?.user?.usuarioID ?? null;
-          } else {
-            usuarioID = session?.usuarioID ?? session?.user?.usuarioID ?? null;
-          }
-        } catch {
-          usuarioID = null;
-        }
-
-        const payload = {
-          latitud: lat,
-          longitud: lng,
-          indicador: form.indicador,
-          comentario: form.comentario.trim(),
-        };
-
-        // Solo mandamos usuarioID si realmente tenemos uno válido
+        // Agregar usuarioID si está disponible
+        const usuarioID = user?.id || null;
         if (usuarioID != null) {
           payload.usuarioID = usuarioID;
         }
-
-        await MapaAPI.create(payload);
+        await addMarcador(payload);
       } else {
-        await MapaAPI.update({
-          marcadorID: form.marcadorID,
-          latitud: lat,
-          longitud: lng,
-          indicador: form.indicador,
-          comentario: form.comentario.trim(),
-        });
+        payload.marcadorID = form.marcadorID;
+        await updateMarcador(payload);
       }
 
-      await loadMarcadores();
       setFormOpen(false);
     } catch (err) {
       console.error("Error al guardar marcador:", err);
-      setError("Ocurrió un error al guardar el marcador.");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -207,15 +166,7 @@ export default function MapaAdmin() {
     );
     if (!ok) return;
 
-    try {
-      await MapaAPI.remove(marcador.marcadorID);
-      setMarcadores((prev) =>
-        prev.filter((m) => m.marcadorID !== marcador.marcadorID)
-      );
-    } catch (err) {
-      console.error(err);
-      setError("No se pudo eliminar el marcador.");
-    }
+    await deleteMarcador(marcador.marcadorID);
   };
 
   // Centro del mapa
@@ -261,7 +212,6 @@ export default function MapaAdmin() {
               zoom={15}
               style={{ height: "100%", minHeight: "400px", width: "100%" }}
             >
-              {/* Mapa base */}
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution="&copy; OpenStreetMap contributors"
@@ -277,7 +227,6 @@ export default function MapaAdmin() {
 
                 return (
                   <div key={m.marcadorID}>
-                    {/* Mancha de color */}
                     <Circle
                       center={[m.latitud, m.longitud]}
                       radius={getRadius(m.indicador)}
@@ -295,7 +244,6 @@ export default function MapaAdmin() {
                       </Tooltip>
                     </Circle>
 
-                    {/* Marcador puntual */}
                     <Marker position={[m.latitud, m.longitud]}>
                       <Popup>
                         <div className="space-y-1 text-sm">
@@ -327,8 +275,18 @@ export default function MapaAdmin() {
           )}
         </div>
 
-        {/* PANEL LATERAL: LISTA + FORM */}
+        {/* PANEL LATERAL */}
         <div className="w-full lg:w-80 flex flex-col gap-4">
+          {/* FORMULARIO SEPARADO */}
+          <MarcadorForm
+            open={formOpen}
+            mode={mode}
+            form={form}
+            saving={loading}
+            onChange={handleChange}
+            onSubmit={handleSubmit}
+            onClose={() => setFormOpen(false)}
+          />
           {/* LEYENDA */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-sm">
             <h2 className="font-semibold text-slate-800 mb-3">
@@ -409,17 +367,6 @@ export default function MapaAdmin() {
               </ul>
             )}
           </div>
-
-          {/* FORMULARIO SEPARADO */}
-          <MarcadorForm
-            open={formOpen}
-            mode={mode}
-            form={form}
-            saving={saving}
-            onChange={handleChange}
-            onSubmit={handleSubmit}
-            onClose={() => setFormOpen(false)}
-          />
         </div>
       </div>
     </div>

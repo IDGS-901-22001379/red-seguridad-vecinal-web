@@ -3,10 +3,22 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./app/router";
 import "leaflet/dist/leaflet.css";
-import "./styles/tailwind.css"; // tu CSS de Tailwind
+import "./styles/tailwind.css";
+import { AuthProvider } from "./context/AuthContext";
+import MapaState from "./context/Mapa/MapaState";
+import PagosState from "./context/Pagos/PagosState";
+import UsuariosState from "./context/Usuarios/UsuariosState";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <UsuariosState>
+        <PagosState>
+          <MapaState>
+            <RouterProvider router={router} />
+          </MapaState>
+        </PagosState>
+      </UsuariosState>
+    </AuthProvider>
   </React.StrictMode>
 );
