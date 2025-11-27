@@ -46,6 +46,13 @@ export default function Avisos() {
     [categorias]
   );
 
+  // -------- FUNCIÓN PARA PARSEAR FECHAS DE FORMA SEGURA --------
+  const parseDate = (dateValue) => {
+    if (!dateValue) return null;
+    const d = new Date(dateValue);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   // -------- FILTROS + ORDEN + PAGINACIÓN --------
   const data = useMemo(() => {
     let arr = [...(avisos || [])];
@@ -69,32 +76,68 @@ export default function Avisos() {
 
     // Filtro por rango de fechas
     if (query.fechaDesde) {
-      const desde = new Date(query.fechaDesde);
-      arr = arr.filter((a) => new Date(a.fechaPublicacion) >= desde);
+      const desde = parseDate(query.fechaDesde);
+      if (desde) {
+        arr = arr.filter((a) => {
+          const fechaAviso = parseDate(a.fechaPublicacion);
+          return fechaAviso && fechaAviso >= desde;
+        });
+      }
     }
 
     if (query.fechaHasta) {
-      const hasta = new Date(query.fechaHasta);
-      hasta.setHours(23, 59, 59, 999); // Incluir todo el día
-      arr = arr.filter((a) => new Date(a.fechaPublicacion) <= hasta);
+      const hasta = parseDate(query.fechaHasta);
+      if (hasta) {
+        hasta.setHours(23, 59, 59, 999); // Incluir todo el día
+        arr = arr.filter((a) => {
+          const fechaAviso = parseDate(a.fechaPublicacion);
+          return fechaAviso && fechaAviso <= hasta;
+        });
+      }
     }
 
-    // Ordenamiento
+    // Ordenamiento (usando fechaEvento porque fechaPublicacion es la misma para todos)
     if (query.orden === "prioridad") {
-      arr.sort(
-        (a, b) =>
-          catPriority(a.categoriaID) - catPriority(b.categoriaID) ||
-          new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion)
-      );
+      arr.sort((a, b) => {
+        const prioA = catPriority(a.categoriaID);
+        const prioB = catPriority(b.categoriaID);
+
+        if (prioA !== prioB) return prioA - prioB;
+
+        // Si tienen la misma prioridad, ordenar por fecha de evento
+        const fechaA = parseDate(a.fechaEvento);
+        const fechaB = parseDate(b.fechaEvento);
+
+        if (!fechaA && !fechaB) return 0;
+        if (!fechaA) return 1;
+        if (!fechaB) return -1;
+
+        return fechaB - fechaA; // Más reciente primero
+      });
     } else if (query.orden === "antiguos") {
-      arr.sort(
-        (a, b) => new Date(a.fechaPublicacion) - new Date(b.fechaPublicacion)
-      );
+      // Más antiguos primero (por fecha de evento)
+      arr.sort((a, b) => {
+        const fechaA = parseDate(a.fechaEvento);
+        const fechaB = parseDate(b.fechaEvento);
+
+        if (!fechaA && !fechaB) return 0;
+        if (!fechaA) return 1;
+        if (!fechaB) return -1;
+
+        return fechaA - fechaB;
+      });
     } else {
-      // recientes (default)
-      arr.sort(
-        (a, b) => new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion)
-      );
+      // recientes (default) - Más reciente primero (por fecha de evento)
+      arr.sort((a, b) => {
+        const fechaA = parseDate(a.fechaEvento);
+        const fechaB = parseDate(b.fechaEvento);
+
+        if (!fechaA && !fechaB) return 0;
+        if (!fechaA) return 1;
+        if (!fechaB) return -1;
+
+        return fechaB - fechaA;
+      });
     }
 
     const total = arr.length;

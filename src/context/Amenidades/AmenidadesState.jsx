@@ -81,7 +81,6 @@ const AmenidadesState = ({ children }) => {
     [dispatch]
   );
 
-  // ➕ Crear amenidad y traerla completa
   const crearAmenidad = useCallback(
     async (payload) => {
       try {
@@ -104,7 +103,6 @@ const AmenidadesState = ({ children }) => {
     [setLoading, setError]
   );
 
-  // ✏️ Actualizar amenidad y refrescar solo esa fila
   const actualizarAmenidad = useCallback(
     async (id, payload) => {
       try {

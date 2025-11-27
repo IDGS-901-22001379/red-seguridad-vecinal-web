@@ -1,15 +1,6 @@
-// src/pages/reservas/ReservaForm.jsx
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import UsuariosContext from "../../context/Usuarios/UsuariosContext";
 
-/**
- * Props:
- * - open: boolean
- * - onClose: () => void
- * - onSubmit: (payload) => Promise<void> | void
- * - amenidades: [{ amenidadID, nombre, tipoAmenidadNombre, activo }]
- * - initial?: reserva existente (opcional)
- * - saving?: boolean
- */
 export default function ReservaForm({
   open,
   onClose,
@@ -18,6 +9,12 @@ export default function ReservaForm({
   initial,
   saving = false,
 }) {
+  const {
+    usuarios,
+    listarUsuarios,
+    loading: loadingUsuarios,
+  } = useContext(UsuariosContext);
+
   const [form, setForm] = useState({
     usuarioID: "",
     amenidadID: "",
@@ -28,6 +25,13 @@ export default function ReservaForm({
   });
 
   const [errors, setErrors] = useState({});
+
+  // Cargar usuarios al abrir el modal
+  useEffect(() => {
+    if (open && (!usuarios || usuarios.length === 0)) {
+      listarUsuarios();
+    }
+  }, [open, usuarios, listarUsuarios]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -60,6 +64,12 @@ export default function ReservaForm({
 
   if (!open) return null;
 
+  // Filtrar usuarios activos de tipo Admin o Usuario
+  const usuariosFiltrados = (usuarios || []).filter(
+    (u) =>
+      u.activo && (u.tipoUsuario === "Admin" || u.tipoUsuario === "Usuario")
+  );
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
@@ -67,7 +77,7 @@ export default function ReservaForm({
 
   const validate = () => {
     const e = {};
-    if (!form.usuarioID) e.usuarioID = "El usuario es obligatorio.";
+    if (!form.usuarioID) e.usuarioID = "Selecciona un usuario.";
     if (!form.amenidadID) e.amenidadID = "Selecciona una amenidad.";
     if (!form.fechaReserva) e.fechaReserva = "La fecha es obligatoria.";
     if (!form.horaInicio) e.horaInicio = "La hora de inicio es obligatoria.";
@@ -125,16 +135,27 @@ export default function ReservaForm({
             {/* Usuario */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                Usuario ID
+                Usuario
               </label>
-              <input
-                type="number"
+              <select
                 name="usuarioID"
                 value={form.usuarioID}
                 onChange={handleChange}
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="ID del usuario"
-              />
+                disabled={loadingUsuarios}
+              >
+                <option value="">
+                  {loadingUsuarios
+                    ? "Cargando usuarios..."
+                    : "Selecciona un usuario"}
+                </option>
+                {usuariosFiltrados.map((u) => (
+                  <option key={u.usuarioID} value={u.usuarioID}>
+                    {u.nombre} {u.apellido} - Casa {u.numeroCasa} (
+                    {u.tipoUsuario})
+                  </option>
+                ))}
+              </select>
               {errors.usuarioID && (
                 <p className="mt-1 text-xs text-red-600">{errors.usuarioID}</p>
               )}

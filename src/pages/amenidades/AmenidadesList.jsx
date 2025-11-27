@@ -61,10 +61,8 @@ export default function AmenidadesList() {
       clearError();
 
       if (amenidadEdit?.amenidadID) {
-        // ✏️ Actualizar solo esa amenidad y refrescar fila en el estado
         await actualizarAmenidad(amenidadEdit.amenidadID, values);
       } else {
-        // ➕ Crear y agregar al estado con datos completos
         await crearAmenidad(values);
       }
 
@@ -82,9 +80,6 @@ export default function AmenidadesList() {
     }
   };
 
-  // ==========================
-  // Filtro de búsqueda
-  // ==========================
   const amenidadesFiltradas = useMemo(() => {
     const term = busqueda.trim().toLowerCase();
     if (!term) return amenidades || [];
@@ -100,9 +95,6 @@ export default function AmenidadesList() {
 
   const errorAmenidades = localError || error;
 
-  // ==========================
-  // Render
-  // ==========================
   return (
     <div className="p-4 md:p-6">
       {/* Encabezado de página */}
@@ -124,9 +116,6 @@ export default function AmenidadesList() {
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
-            <span className="absolute right-3 top-2.5 text-slate-400 text-sm">
-              🔍
-            </span>
           </div>
 
           <button

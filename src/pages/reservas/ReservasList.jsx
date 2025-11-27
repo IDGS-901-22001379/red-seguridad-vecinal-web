@@ -176,9 +176,6 @@ export default function ReservasList() {
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
-            <span className="absolute right-3 top-2.5 text-slate-400 text-sm">
-              🔍
-            </span>
           </div>
 
           <button
