@@ -1,4 +1,3 @@
-// src/pages/servicios/PersonalMantenimientoForm.jsx
 import { useEffect, useState } from "react";
 
 export default function PersonalMantenimientoForm({
@@ -6,6 +5,7 @@ export default function PersonalMantenimientoForm({
   onClose,
   onSubmit,
   initial,
+  mode = "create", // 👈 NUEVO: "create" | "view"
 }) {
   const [form, setForm] = useState({
     personaID: "",
@@ -52,34 +52,37 @@ export default function PersonalMantenimientoForm({
   const validate = () => {
     const e = {};
 
-    if (!String(form.personaID).trim()) e.personaID = "Persona requerida.";
-    if (!form.puesto.trim()) e.puesto = "Puesto requerido.";
-    if (!form.fechaContratacion) e.fechaContratacion = "Fecha requerida.";
-    if (form.sueldo === "" || Number(form.sueldo) <= 0)
-      e.sueldo = "Sueldo debe ser mayor a 0.";
-    if (!form.tipoContrato.trim())
-      e.tipoContrato = "Tipo de contrato requerido.";
-    if (!form.turno.trim()) e.turno = "Turno requerido.";
-    if (!form.diasLaborales.trim())
-      e.diasLaborales = "Días laborales requeridos.";
+    if (!String(form.personaID).trim()) e.personaID = "Persona requerida";
+    if (!form.puesto.trim()) e.puesto = "Puesto requerido";
+    if (!form.fechaContratacion) e.fechaContratacion = "Fecha requerida";
+    if (form.sueldo === "" || Number(form.sueldo) <= 0) e.sueldo = "Sueldo debe ser mayor a 0";
+    if (!form.tipoContrato.trim()) e.tipoContrato = "Tipo de contrato requerido";
+    if (!form.turno.trim()) e.turno = "Turno requerido";
+    if (!form.diasLaborales.trim()) e.diasLaborales = "Días laborales requeridos";
 
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleChange = (evt) => {
+    if (mode === "view") return; // 👈 BLOQUEAR CAMBIOS EN MODO VISUALIZACIÓN
     const { name, value } = evt.target;
     setForm((f) => ({ ...f, [name]: value }));
   };
 
   const handleSubmit = (evt) => {
     evt.preventDefault();
+    if (mode === "view") {
+      onClose(); // 👈 EN MODO VIEW, SOLO CERRAR
+      return;
+    }
+    
     if (!validate()) return;
 
     const payload = {
       personaID: Number(form.personaID),
       puesto: form.puesto.trim(),
-      fechaContratacion: form.fechaContratacion, // 'YYYY-MM-DD' desde el input date
+      fechaContratacion: form.fechaContratacion,
       sueldo: Number(form.sueldo),
       tipoContrato: form.tipoContrato.trim(),
       turno: form.turno.trim(),
@@ -90,45 +93,49 @@ export default function PersonalMantenimientoForm({
     onSubmit(payload);
   };
 
+  const isViewMode = mode === "view";
+
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
-        <div className="flex items-center justify-between border-b px-5 py-3">
-          <h2 className="font-semibold text-slate-800">
-            {initial
-              ? "Editar personal de mantenimiento"
-              : "Nuevo personal de mantenimiento"}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
+        <div className="bg-emerald-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
+          <h2 className="text-xl font-bold">
+            {isViewMode ? "Detalles del Personal" : initial ? "Editar Personal" : "Nuevo Personal de Mantenimiento"}
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
+            className="w-8 h-8 grid place-items-center rounded-lg hover:bg-white/10 transition-colors"
           >
-            ✕
+            <span>×</span>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+        <form onSubmit={handleSubmit} className="px-6 py-4 max-h-[70vh] overflow-y-auto">
           {/* Persona ID */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              ID de persona (relación con Personas)
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              ID de Persona
             </label>
             <input
               type="number"
               name="personaID"
               value={form.personaID}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              disabled={isViewMode} // 👈 DESHABILITADO EN MODO VIEW
+              className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                isViewMode ? "bg-slate-100 text-slate-600" : ""
+              }`}
+              placeholder="Ingresa el ID de la persona"
             />
             {errors.personaID && (
               <p className="text-xs text-red-500 mt-1">{errors.personaID}</p>
             )}
           </div>
 
-          {/* Puesto y sueldo */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Puesto y Sueldo */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Puesto
               </label>
               <input
@@ -136,22 +143,30 @@ export default function PersonalMantenimientoForm({
                 name="puesto"
                 value={form.puesto}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                disabled={isViewMode}
+                className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isViewMode ? "bg-slate-100 text-slate-600" : ""
+                }`}
+                placeholder="Ej. Jardinero, Electricista"
               />
               {errors.puesto && (
                 <p className="text-xs text-red-500 mt-1">{errors.puesto}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Sueldo mensual
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Sueldo Mensual
               </label>
               <input
                 type="number"
                 name="sueldo"
                 value={form.sueldo}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                disabled={isViewMode}
+                className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isViewMode ? "bg-slate-100 text-slate-600" : ""
+                }`}
+                placeholder="0.00"
               />
               {errors.sueldo && (
                 <p className="text-xs text-red-500 mt-1">{errors.sueldo}</p>
@@ -159,34 +174,38 @@ export default function PersonalMantenimientoForm({
             </div>
           </div>
 
-          {/* Fecha y tipo contrato */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Fecha y Tipo de Contrato */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Fecha de contratación
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Fecha de Contratación
               </label>
               <input
                 type="date"
                 name="fechaContratacion"
                 value={form.fechaContratacion}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                disabled={isViewMode}
+                className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isViewMode ? "bg-slate-100 text-slate-600" : ""
+                }`}
               />
               {errors.fechaContratacion && (
-                <p className="text-xs text-red-500 mt-1">
-                  {errors.fechaContratacion}
-                </p>
+                <p className="text-xs text-red-500 mt-1">{errors.fechaContratacion}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Tipo de contrato
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Tipo de Contrato
               </label>
               <select
                 name="tipoContrato"
                 value={form.tipoContrato}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                disabled={isViewMode}
+                className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isViewMode ? "bg-slate-100 text-slate-600" : ""
+                }`}
               >
                 <option value="">Selecciona una opción</option>
                 <option value="Indefinido">Indefinido</option>
@@ -194,80 +213,97 @@ export default function PersonalMantenimientoForm({
                 <option value="Por proyecto">Por proyecto</option>
               </select>
               {errors.tipoContrato && (
-                <p className="text-xs text-red-500 mt-1">
-                  {errors.tipoContrato}
-                </p>
+                <p className="text-xs text-red-500 mt-1">{errors.tipoContrato}</p>
               )}
             </div>
           </div>
 
-          {/* Turno y días laborales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Turno y Días Laborales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Turno
               </label>
-              <input
-                type="text"
+              <select
                 name="turno"
                 value={form.turno}
                 onChange={handleChange}
-                placeholder="Ej. Matutino, Vespertino, Nocturno"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+                disabled={isViewMode}
+                className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isViewMode ? "bg-slate-100 text-slate-600" : ""
+                }`}
+              >
+                <option value="">Selecciona turno</option>
+                <option value="Matutino">Matutino</option>
+                <option value="Vespertino">Vespertino</option>
+                <option value="Nocturno">Nocturno</option>
+                <option value="Mixto">Mixto</option>
+              </select>
               {errors.turno && (
                 <p className="text-xs text-red-500 mt-1">{errors.turno}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Días laborales
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Días Laborales
               </label>
-              <input
-                type="text"
+              <select
                 name="diasLaborales"
                 value={form.diasLaborales}
                 onChange={handleChange}
-                placeholder="Ej. Lunes-Viernes"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+                disabled={isViewMode}
+                className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  isViewMode ? "bg-slate-100 text-slate-600" : ""
+                }`}
+              >
+                <option value="">Selecciona días</option>
+                <option value="Lunes-Viernes">Lunes a Viernes</option>
+                <option value="Lunes-Sábado">Lunes a Sábado</option>
+                <option value="Martes-Sábado">Martes a Sábado</option>
+                <option value="Miércoles-Domingo">Miércoles a Domingo</option>
+                <option value="Lunes-Domingo">Lunes a Domingo</option>
+              </select>
               {errors.diasLaborales && (
-                <p className="text-xs text-red-500 mt-1">
-                  {errors.diasLaborales}
-                </p>
+                <p className="text-xs text-red-500 mt-1">{errors.diasLaborales}</p>
               )}
             </div>
           </div>
 
           {/* Notas */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Notas
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Notas Adicionales
             </label>
             <textarea
               name="notas"
               rows={3}
               value={form.notas}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              disabled={isViewMode}
+              className={`w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
+                isViewMode ? "bg-slate-100 text-slate-600" : ""
+              }`}
+              placeholder="Información adicional sobre el personal..."
             />
           </div>
 
           {/* Botones */}
-          <div className="flex justify-end gap-2 pt-3 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+              className="px-4 py-2.5 rounded-full bg-slate-600 text-white text-sm font-semibold hover:bg-slate-700 transition-colors"
             >
-              Cancelar
+              {isViewMode ? "Cerrar" : "Cancelar"} {/* 👈 CAMBIADO */}
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {initial ? "Guardar cambios" : "Registrar personal"}
-            </button>
+            {!isViewMode && ( // 👈 SOLO MOSTRAR EN MODO CREAR/EDITAR
+              <button
+                type="submit"
+                className="px-4 py-2.5 rounded-full bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+              >
+                {initial ? "Guardar Cambios" : "Registrar Personal"}
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -1,4 +1,3 @@
-// context/Alertas/AlertasState.jsx
 import React, { useReducer } from "react";
 import AlertasContext from "./AlertasContext";
 import {
@@ -15,6 +14,7 @@ import {
 } from "./ActionTypes";
 import { AlertasReducer } from "./AlertasReducer";
 import axios from "axios";
+import { get } from "react-hook-form";
 
 const initialState = {
   alertas: [],
@@ -30,135 +30,84 @@ const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5165/api";
 const AlertasState = (props) => {
   const [state, dispatch] = useReducer(AlertasReducer, initialState);
 
-  const setLoading = (value) => dispatch({ type: SET_LOADING, payload: value });
-  const setError = (error) => dispatch({ type: SET_ERROR, payload: error });
+  const setLoading = (val) => dispatch({ type: SET_LOADING, payload: val });
+  const setError = (e) => dispatch({ type: SET_ERROR, payload: e });
   const clearError = () => dispatch({ type: CLEAR_ERROR });
-  const setNotification = (notification) => dispatch({ type: SET_NOTIFICATION, payload: notification });
+  const setNotification = (n) => dispatch({ type: SET_NOTIFICATION, payload: n });
   const clearNotification = () => dispatch({ type: CLEAR_NOTIFICATION });
 
   const getAlertas = async () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API}/Alertas`);
-      
-      dispatch({
-        type: GET_ALERTAS,
-        payload: res.data,
-      });
-
-      return res.data;
-    } catch (error) {
-      console.error("Error al obtener alertas:", error);
-      setError("No se pudieron cargar las alertas.");
-      return [];
+      dispatch({ type: GET_ALERTAS, payload: res.data });
+    } catch (err) {
+      setError("No se pudieron cargar las alertas");
     }
   };
 
-  const getAlertasByUsuario = async (usuarioId) => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API}/Alertas/usuario/${usuarioId}`);
-      
-      dispatch({
-        type: GET_ALERTAS_USUARIO,
-        payload: res.data,
-      });
+  // OBTENER DETALLE DE UNA ALERTA
+const getAlertaDetalle = async (id) => {
+  dispatch({ type: "LOADING" });
 
-      return res.data;
-    } catch (error) {
-      console.error("Error al obtener alertas del usuario:", error);
-      setError("No se pudieron cargar las alertas del usuario.");
-      return [];
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/alertas/${id}`);
+
+    if (!res.ok) {
+      throw new Error("No se pudo obtener el detalle de la alerta");
     }
-  };
 
-  const getAlertaDetalle = async (alertaId) => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API}/Alertas/${alertaId}`);
-      
-      dispatch({
-        type: GET_ALERTA_DETALLE,
-        payload: res.data,
-      });
+    const data = await res.json();
 
-      return res.data;
-    } catch (error) {
-      console.error("Error al obtener detalle de alerta:", error);
-      setError("No se pudo cargar el detalle de la alerta.");
-      return null;
-    }
-  };
+    dispatch({
+      type: "SET_ALERTA_DETALLE",
+      payload: data,
+    });
+  } catch (error) {
+    dispatch({
+      type: "ERROR",
+      payload: error.message,
+    });
+  }
+};
 
-  const crearAlerta = async (alertaData) => {
-    try {
-      setLoading(true);
-      const res = await axios.post(`${API}/Alertas`, alertaData);
-      
-      dispatch({
-        type: CREAR_ALERTA,
-        payload: res.data,
-      });
+const atenderAlerta = async (firebaseID) => {
+  try {
+    setLoading(true);
 
-      setNotification({
-        type: "success",
-        message: "Alerta creada exitosamente",
-      });
+    await axios.put(`${API}/alertas/firebase/${firebaseID}/estatus`, {
+      estatus: "atendida"
+    });
 
-      return res.data;
-    } catch (error) {
-      console.error("Error al crear alerta:", error);
-      setError("No se pudo crear la alerta.");
-      return null;
-    }
-  };
+    dispatch({
+      type: ATENDER_ALERTA,
+      payload: { firebaseID }
+    });
 
-  const atenderAlerta = async (alertaId) => {
-    try {
-      setLoading(true);
-      await axios.put(`${API}/Alertas/${alertaId}/estado`, { activa: false });
-      
-      dispatch({
-        type: ATENDER_ALERTA,
-        payload: alertaId,
-      });
+    setNotification({
+      type: "success",
+      message: `Alerta atendida correctamente`
+    });
 
-      setNotification({
-        type: "success",
-        message: `Alerta #${alertaId} marcada como atendida`,
-      });
+  } catch (err) {
+    setError("Error al atender alerta");
+  }
+};
 
-      return true;
-    } catch (error) {
-      console.error("Error al atender alerta:", error);
-      setError("No se pudo atender la alerta.");
-      return false;
-    }
-  };
 
-  const isAlertaActiva = (alerta) => {
-    return alerta?.activa === true || alerta?.activa === 1 || alerta?.estatus === "Activa";
+  const isAlertaActiva = (a) => {
+    return a?.estatus?.toLowerCase() === "activa";
   };
 
   return (
     <AlertasContext.Provider
       value={{
-        alertas: state.alertas,
-        alertasUsuario: state.alertasUsuario,
-        alertaDetalle: state.alertaDetalle,
-        loading: state.loading,
-        error: state.error,
-        notification: state.notification,
-
+        ...state,
         getAlertas,
-        getAlertasByUsuario,
-        getAlertaDetalle,
-        crearAlerta,
         atenderAlerta,
         isAlertaActiva,
-        setError,
         clearError,
-        setNotification,
+        getAlertaDetalle,
         clearNotification,
       }}
     >

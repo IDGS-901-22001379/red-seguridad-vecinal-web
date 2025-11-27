@@ -1,4 +1,3 @@
-// context/Alertas/AlertasReducer.js
 import {
   GET_ALERTAS,
   GET_ALERTAS_USUARIO,
@@ -13,9 +12,16 @@ import {
 } from "./ActionTypes";
 
 export const AlertasReducer = (state, action) => {
-  const { payload, type } = action;
+  const { type, payload } = action;
 
   switch (type) {
+
+    case SET_LOADING:
+      return {
+        ...state,
+        loading: true,
+      };
+
     case GET_ALERTAS:
       return {
         ...state,
@@ -51,20 +57,23 @@ export const AlertasReducer = (state, action) => {
     case ATENDER_ALERTA:
       return {
         ...state,
-        alertas: state.alertas.map(alerta =>
-          alerta.alertaID === payload
-            ? { ...alerta, activa: false, estatus: "Atendida" }
-            : alerta
+
+        // Actualizar lista completa
+        alertas: state.alertas.map(a =>
+          a.firebaseID === payload.firebaseID
+            ? { ...a, estatus: "atendida" }
+            : a
         ),
-        alertaDetalle: state.alertaDetalle?.alertaID === payload 
-          ? { ...state.alertaDetalle, activa: false, estatus: "Atendida" }
-          : state.alertaDetalle,
+
+        // Actualizar detalle actual
+        alertaDetalle:
+          state.alertaDetalle?.firebaseID === payload.firebaseID
+            ? { ...state.alertaDetalle, estatus: "atendida" }
+            : state.alertaDetalle,
+
         loading: false,
         error: null,
       };
-
-    case SET_LOADING:
-      return { ...state, loading: payload };
 
     case SET_ERROR:
       return { ...state, error: payload, loading: false };
