@@ -22,11 +22,7 @@ export const AuthProvider = ({ children }) => {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
-<<<<<<< HEAD
-        console.error("Error parsing stored user:", error);
-=======
-        alert("Error", error);
->>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
+        alert("Error", error.message);
         localStorage.removeItem("user");
       }
     }
@@ -43,7 +39,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (!response.ok) {
-<<<<<<< HEAD
         let errorMessage = "Credenciales incorrectas";
         try {
           const errorData = await response.json();
@@ -54,15 +49,10 @@ export const AuthProvider = ({ children }) => {
           errorMessage = errorText || errorMessage;
         }
         throw new Error(errorMessage);
-=======
-        const errorData = await response.text();
-        throw new Error(errorData || "Credenciales incorrectas");
->>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
       }
 
       const data = await response.json();
 
-<<<<<<< HEAD
       // Validar rol permitido
       const tiposPermitidos = ["Admin", "Guardia"];
       if (!tiposPermitidos.includes(data.tipoUsuario)) {
@@ -74,8 +64,6 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
-=======
->>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
       const userData = {
         id: data.id,
         nombre: data.nombre,
@@ -89,7 +77,6 @@ export const AuthProvider = ({ children }) => {
       };
 
       setUser(userData);
-<<<<<<< HEAD
       localStorage.setItem("user", JSON.stringify(userData));
 
       return { success: true };
@@ -100,16 +87,6 @@ export const AuthProvider = ({ children }) => {
         error: error.message || "Error de conexión con el servidor",
         errorType: "AUTH_ERROR",
       };
-=======
-
-      localStorage.setItem("user", JSON.stringify(userData));
-
-      return true;
-    } catch (error) {
-      console.error("Error en login:", error);
-      alert(error.message || "Error de conexión con el servidor");
-      return false;
->>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
     } finally {
       setLoading(false);
     }
@@ -120,24 +97,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
   };
 
-<<<<<<< HEAD
   const hasRole = (roles) => {
     if (!user) return false;
     return roles.includes(user.tipoUsuario);
   };
 
-=======
->>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
   const value = {
     user,
     login,
     logout,
     loading,
     isAuthenticated: !!user,
-<<<<<<< HEAD
     hasRole,
-=======
->>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

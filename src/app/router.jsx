@@ -103,7 +103,7 @@ export const router = createBrowserRouter([
 
       // *** Amenidades (ruta para el sidebar) ***
       {
-        path: "admin/amenidades",
+        path: "admin/amenidades/amenidades",
         element: <AmenidadesList />,
       },
 
