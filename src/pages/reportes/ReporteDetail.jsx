@@ -1,7 +1,7 @@
 // src/pages/reportes/ReporteDetail.jsx
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
-import ReportesAPI from "../../services/reportes.api";
+import { useEffect, useMemo, useContext } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import ReportesContext from "../../context/Reportes/ReportesContext";
 
 // Paleta base usada
 const COLORS = {
@@ -68,25 +68,20 @@ export default function ReporteDetail() {
   const { id } = useParams();
   const nav = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [item, setItem] = useState(null);
-  const [error, setError] = useState("");
+  const {
+    reporteActual: item,
+    loading,
+    error,
+    fetchReporteById,
+    marcarVisto,
+    cambiarAnonimato,
+  } = useContext(ReportesContext);
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const r = await ReportesAPI.getById(id);
-      setItem(r);
-    } catch (e) {
-      setError(e.message || "No se pudo cargar el reporte");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Cargar detalle desde el contexto
   useEffect(() => {
-    load();
+    if (id) {
+      fetchReporteById(Number(id));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -96,24 +91,27 @@ export default function ReporteDetail() {
   }, [item]);
 
   const onVisto = async () => {
+    if (!item) return;
     try {
-      await ReportesAPI.marcarVisto(item.reporteID, !item.visto);
-      setItem((x) => ({ ...x, visto: !x.visto }));
+      await marcarVisto(item.reporteID, !item.visto);
+      // El contexto se encarga de actualizar el estado
     } catch (e) {
       alert(e.message || "No se pudo actualizar el estado");
     }
   };
 
   const onAnon = async () => {
+    if (!item) return;
     try {
-      await ReportesAPI.setAnonimato(item.reporteID, !item.esAnonimo);
-      setItem((x) => ({ ...x, esAnonimo: !x.esAnonimo }));
+      await cambiarAnonimato(item.reporteID, !item.esAnonimo);
+      // El contexto se encarga de actualizar el estado
     } catch (e) {
       alert(e.message || "No se pudo cambiar el anonimato");
     }
   };
 
   const copyCoords = async () => {
+    if (!item) return;
     try {
       await navigator.clipboard.writeText(`${item.latitud}, ${item.longitud}`);
       alert("Coordenadas copiadas");
@@ -154,7 +152,7 @@ export default function ReporteDetail() {
             Volver
           </button>
           <button
-            onClick={load}
+            onClick={() => fetchReporteById(Number(id))}
             className="px-3 py-2 text-sm rounded-lg border border-[#10B981] bg-[#10B981] text-white
                        active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-emerald-300"
             title="Recargar"

@@ -1,7 +1,11 @@
 // src/services/http.js
 
-// Base del backend (ej. http://localhost:5165). En .env: VITE_API_BASE_URL
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+// Base del backend (ej. http://localhost:5165).
+// Usa VITE_API_BASE_URL si existe; si no, por defecto localhost:5165
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5165"
+).replace(/\/$/, "");
+
 const API_PREFIX = "/api";
 
 // Une dos segmentos de forma segura
@@ -166,8 +170,11 @@ export const http = {
   /** PATCH con body (objeto). */
   patch: (path, body, opts) => request("PATCH", path, { ...opts, body }),
 
-  /** DELETE simple. */
+  /** DELETE simple (nombre corto). */
   del: (path, opts) => request("DELETE", path, opts),
+
+  // Alias estilo Axios para que funcione http.delete(...)
+  delete: (path, opts) => request("DELETE", path, opts),
 
   /** Subida de archivos con FormData (no se fuerza Content-Type). */
   upload: (path, formData, opts) =>

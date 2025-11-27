@@ -1,25 +1,25 @@
-// src/app/ProtectedRoute.jsx
-import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { Navigate } from "react-router-dom";
 
-export default function ProtectedRoute({ children, roles }) {
-  let session = null;
-  try {
-    session = JSON.parse(localStorage.getItem("session")) || null;
-  } catch {
-    session = null; // fallback si el JSON está corrupto
-  }
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
 
-  const location = useLocation();
-
-  if (!session?.userId) {
+  if (loading) {
     return (
-      <Navigate to="/auth/login" replace state={{ from: location.pathname }} />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
     );
   }
 
-  if (roles?.length && !roles.includes(session.tipoUsuarioID)) {
-    return <Navigate to="/dashboard" replace />;
+  if (!user) {
+    return <Navigate to="/auth/login" replace />;
   }
 
   return children;
-}
+};
+
+export default ProtectedRoute;
