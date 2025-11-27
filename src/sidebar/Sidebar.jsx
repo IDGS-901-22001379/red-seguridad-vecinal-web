@@ -124,7 +124,7 @@ export default function Sidebar() {
           )}
           <NavLink
             to="/admin/accesos/qr-personales"
-            className={linkCls}
+            className={({ isActive }) => linkCls(isActive)}
             title="QR personales"
             end
           >
@@ -156,7 +156,11 @@ export default function Sidebar() {
             <span className="text-emerald-700">{Icon.building}</span>
             {!collapsed && <span>Amenidades</span>}
           </NavLink>
-          <NavLink to="/admin/reservas" className={linkCls} title="Reservas">
+          <NavLink
+            to="/admin/amenidades/reservas"
+            className={linkCls}
+            title="Reservas"
+          >
             <span className="text-emerald-700">{Icon.calendar}</span>
             {!collapsed && <span>Reservas</span>}
           </NavLink>

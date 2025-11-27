@@ -1,8 +1,8 @@
 // src/pages/reportes/ReportesList.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import ReportesAPI from "../../services/reportes.api";
 import ConfirmModal from "../../components/modals/ConfirmModal";
+import ReportesContext from "../../context/Reportes/ReportesContext";
 
 const Badge = ({ children, className = "" }) => (
   <span
@@ -38,10 +38,16 @@ const TipoBadge = ({ tipo }) => {
 export default function ReportesList() {
   const nav = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [tipos, setTipos] = useState([]);
-  const [items, setItems] = useState([]);
-  const [error, setError] = useState("");
+  const {
+    reportes,
+    tiposReporte,
+    loading,
+    error,
+    fetchReportes,
+    fetchTiposReporte,
+    marcarVisto,
+    cambiarAnonimato,
+  } = useContext(ReportesContext);
 
   // modal de confirmación
   const [confirm, setConfirm] = useState({
@@ -58,28 +64,16 @@ export default function ReportesList() {
   const [estado, setEstado] = useState("all"); // all | pendiente | atendido
 
   const fetchAll = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [list, ts] = await Promise.all([
-        ReportesAPI.list(),
-        ReportesAPI.tiposReporte(),
-      ]);
-      setItems(list);
-      setTipos(ts);
-    } catch (e) {
-      setError(e.message || "Error al cargar reportes");
-    } finally {
-      setLoading(false);
-    }
+    await Promise.all([fetchReportes(), fetchTiposReporte()]);
   };
 
   useEffect(() => {
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
-    return items
+    return reportes
       .filter((r) =>
         q.trim()
           ? `${r.titulo} ${r.descripcion} ${r.nombreUsuario} ${r.direccionTexto} ${r.tipoReporte}`
@@ -96,7 +90,7 @@ export default function ReportesList() {
           new Date(b.fechaCreacion).getTime() -
           new Date(a.fechaCreacion).getTime()
       );
-  }, [items, q, tipo, estado]);
+  }, [reportes, q, tipo, estado]);
 
   // Helpers para abrir/cerrar modal
   const openConfirm = (payload) => setConfirm({ ...payload, open: true });
@@ -104,17 +98,13 @@ export default function ReportesList() {
 
   // Acciones (se invocan DESPUÉS de confirmar)
   const doMarcarVisto = async (id, newValue) => {
-    await ReportesAPI.marcarVisto(id, newValue);
-    setItems((prev) =>
-      prev.map((x) => (x.reporteID === id ? { ...x, visto: newValue } : x))
-    );
+    await marcarVisto(id, newValue);
+    // El contexto actualiza la lista
   };
 
   const doToggleAnon = async (id, newValue) => {
-    await ReportesAPI.setAnonimato(id, newValue);
-    setItems((prev) =>
-      prev.map((x) => (x.reporteID === id ? { ...x, esAnonimo: newValue } : x))
-    );
+    await cambiarAnonimato(id, newValue);
+    // El contexto actualiza la lista
   };
 
   // Handlers que abren el modal
@@ -220,7 +210,7 @@ export default function ReportesList() {
           onChange={(e) => setTipo(e.target.value)}
         >
           <option value="all">Todos los tipos</option>
-          {tipos.map((t) => (
+          {tiposReporte.map((t) => (
             <option key={t.tipoReporteID} value={t.tipoReporteID}>
               {t.nombre}
             </option>
@@ -306,9 +296,9 @@ export default function ReportesList() {
                     </div>
                   </div>
 
-                  {/* Botonera (color sólido + click effect) */}
+                  {/* Botonera */}
                   <div className="flex items-center gap-2.5">
-                    {/* Detalle — sólido primario #047857 */}
+                    {/* Detalle */}
                     <button
                       onClick={() => nav(`/admin/reportes/${r.reporteID}`)}
                       className="px-4 py-2.5 text-base rounded-xl border border-[#047857]
@@ -320,7 +310,7 @@ export default function ReportesList() {
                       Detalle
                     </button>
 
-                    {/* Estado — sólido Warning si pendiente, Light si atendido */}
+                    {/* Estado */}
                     <button
                       onClick={() => onMarcarVisto(r)}
                       className={`px-4 py-2.5 text-base rounded-xl border active:scale-95 transition
@@ -335,7 +325,7 @@ export default function ReportesList() {
                       {r.visto ? "Marcar como pendiente" : "Marcar atendido"}
                     </button>
 
-                    {/* (Des)Anonimizar — sólido Action #F97316 */}
+                    {/* (Des)Anonimizar */}
                     <button
                       onClick={() => onToggleAnon(r)}
                       className="px-4 py-2.5 text-base rounded-xl border border-[#F97316]

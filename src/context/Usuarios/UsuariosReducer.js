@@ -2,6 +2,7 @@ import { USUARIOS_ACTIONS } from "./ActionsTypes";
 
 export default function UsuariosReducer(state, action) {
     switch (action.type) {
+<<<<<<< HEAD
         case USUARIOS_ACTIONS.LOADING:
             return {
                 ...state,
@@ -16,11 +17,16 @@ export default function UsuariosReducer(state, action) {
                 error: null
             };
 
+=======
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
         case USUARIOS_ACTIONS.LISTAR:
             return {
                 ...state,
                 usuarios: action.payload,
+<<<<<<< HEAD
                 loading: false,
+=======
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
                 error: null
             };
 
@@ -28,7 +34,10 @@ export default function UsuariosReducer(state, action) {
             return {
                 ...state,
                 usuarioSeleccionado: action.payload,
+<<<<<<< HEAD
                 loading: false,
+=======
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
                 error: null
             };
 
@@ -36,7 +45,10 @@ export default function UsuariosReducer(state, action) {
             return {
                 ...state,
                 usuarios: [...state.usuarios, action.payload],
+<<<<<<< HEAD
                 saving: false,
+=======
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
                 error: null
             };
 
@@ -46,6 +58,7 @@ export default function UsuariosReducer(state, action) {
                 usuarios: state.usuarios.map((u) =>
                     u.usuarioID === action.payload.usuarioID ? action.payload : u
                 ),
+<<<<<<< HEAD
                 saving: false,
                 error: null
             };
@@ -67,6 +80,8 @@ export default function UsuariosReducer(state, action) {
                     u.usuarioID === action.payload.usuarioID ? action.payload : u
                 ),
                 saving: false,
+=======
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
                 error: null
             };
 
@@ -74,13 +89,17 @@ export default function UsuariosReducer(state, action) {
             return {
                 ...state,
                 tiposUsuario: action.payload,
+<<<<<<< HEAD
                 loading: false,
+=======
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
                 error: null
             };
 
         case USUARIOS_ACTIONS.ERROR:
             return {
                 ...state,
+<<<<<<< HEAD
                 error: action.payload,
                 loading: false,
                 saving: false
@@ -90,9 +109,16 @@ export default function UsuariosReducer(state, action) {
             return {
                 ...state,
                 error: null
+=======
+                error: action.payload
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d
             };
 
         default:
             return state;
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> d865f279f1327399bfaf9066fade0b791022c98d

@@ -1,212 +1,118 @@
 // src/pages/servicios/PersonalMantenimientoList.jsx
-import { useEffect, useMemo, useState } from "react";
-import ServiciosAPI from "../../services/servicios.api";
+import { useContext, useEffect, useState } from "react";
+import ServiciosContext from "../../context/Servicios/ServiciosContext";
 import PersonalMantenimientoForm from "./PersonalMantenimientoForm";
 
 export default function PersonalMantenimientoList() {
-  const [personal, setPersonal] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const {
+    personalMantenimiento,
+    loading,
+    error,
+    cargarPersonalMantenimiento,
+    crearPersonalMantenimiento,
+    clearError,
+  } = useContext(ServiciosContext);
 
-  const [search, setSearch] = useState("");
-
-  // modal
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // por ahora solo alta, pero dejamos listo
-
-  const cargarDatos = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const res = await ServiciosAPI.getPersonalMantenimiento();
-      setPersonal(res || []);
-    } catch (err) {
-      console.error(err);
-      setError("No se pudo cargar el personal de mantenimiento.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [openForm, setOpenForm] = useState(false);
 
   useEffect(() => {
-    cargarDatos();
+    cargarPersonalMantenimiento();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtrados = useMemo(() => {
-    return personal.filter((p) => {
-      const txt = search.toLowerCase();
-      if (!txt.trim()) return true;
-
-      return (
-        p.nombrePersona?.toLowerCase().includes(txt) ||
-        p.puesto?.toLowerCase().includes(txt) ||
-        p.turno?.toLowerCase().includes(txt) ||
-        p.diasLaborales?.toLowerCase().includes(txt)
-      );
-    });
-  }, [personal, search]);
-
-  const abrirNuevo = () => {
-    setEditing(null);
-    setFormOpen(true);
+  const handleNuevo = () => {
+    setOpenForm(true);
   };
 
-  // (si más adelante agregas PUT para editar, reutilizas esto)
-  const abrirEditar = (persona) => {
-    setEditing(persona);
-    setFormOpen(true);
-  };
-
-  const handleSubmitForm = async (payload) => {
-    try {
-      setError("");
-
-      if (editing) {
-        // TODO: cuando exista endpoint PUT /personal-mantenimiento/{id}
-        // await ServiciosAPI.actualizarPersonalMantenimiento(editing.personalMantenimientoID, payload);
-        console.warn(
-          "Edición pendiente de implementar en backend, por ahora solo crea."
-        );
-      } else {
-        await ServiciosAPI.crearPersonalMantenimiento(payload);
-      }
-
-      setFormOpen(false);
-      setEditing(null);
-      await cargarDatos();
-    } catch (err) {
-      console.error(err);
-      setError("Hubo un error al guardar el registro.");
-    }
+  const handleSubmit = async (values) => {
+    await crearPersonalMantenimiento(values);
+    setOpenForm(false);
   };
 
   return (
-    <div className="space-y-4">
-      {/* Encabezado */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-800">
-            Personal de mantenimiento
-          </h1>
-          <p className="text-sm text-slate-500">
-            Colaboradores internos (conserjes, jardineros, electricistas, etc.)
-            responsables del mantenimiento de la unidad.
-          </p>
-        </div>
-
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold text-slate-800">
+          Personal de mantenimiento
+        </h1>
         <button
-          onClick={abrirNuevo}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+          onClick={handleNuevo}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-3 py-1.5 rounded"
         >
-          + Registrar personal
+          + Nuevo personal
         </button>
       </div>
 
-      {/* Filtro/búsqueda */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
-        <input
-          type="text"
-          placeholder="Buscar por nombre, puesto, turno o días laborales..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
-      </div>
-
-      {/* Tabla */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-4 py-2 text-left">Nombre</th>
-                <th className="px-4 py-2 text-left">Puesto</th>
-                <th className="px-4 py-2 text-left">Turno</th>
-                <th className="px-4 py-2 text-left">Días laborales</th>
-                <th className="px-4 py-2 text-left">Teléfono</th>
-                <th className="px-4 py-2 text-center">Estado</th>
-                <th className="px-4 py-2 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-6 text-center text-slate-500"
-                  >
-                    Cargando personal...
-                  </td>
-                </tr>
-              )}
-
-              {!loading && filtrados.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-6 text-center text-slate-500"
-                  >
-                    No hay personal registrado.
-                  </td>
-                </tr>
-              )}
-
-              {!loading &&
-                filtrados.map((p) => (
-                  <tr
-                    key={p.personalMantenimientoID}
-                    className="border-t border-slate-100 hover:bg-slate-50/60"
-                  >
-                    <td className="px-4 py-2">
-                      <div className="font-medium text-slate-800">
-                        {p.nombrePersona}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">{p.puesto}</td>
-                    <td className="px-4 py-2">{p.turno}</td>
-                    <td className="px-4 py-2">{p.diasLaborales}</td>
-                    <td className="px-4 py-2">{p.telefonoPersona}</td>
-                    <td className="px-4 py-2 text-center">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          p.activo
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-slate-200 text-slate-600"
-                        }`}
-                      >
-                        {p.activo ? "Activo" : "Inactivo"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <button
-                        onClick={() => abrirEditar(p)}
-                        className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-slate-800 text-white hover:bg-slate-900"
-                      >
-                        Ver / editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {loading && (
+        <p className="text-sm text-slate-500">Cargando información...</p>
+      )}
 
       {error && (
-        <div className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded flex justify-between">
+          <span>{error}</span>
+          <button
+            onClick={clearError}
+            className="text-xs underline underline-offset-2"
+          >
+            cerrar
+          </button>
         </div>
       )}
 
-      {/* Modal formulario */}
+      <div className="overflow-x-auto bg-white shadow-sm rounded-lg">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="px-3 py-2 text-left font-semibold">PersonaID</th>
+              <th className="px-3 py-2 text-left font-semibold">Puesto</th>
+              <th className="px-3 py-2 text-left font-semibold">
+                Fecha contratación
+              </th>
+              <th className="px-3 py-2 text-left font-semibold">Sueldo</th>
+              <th className="px-3 py-2 text-left font-semibold">
+                Tipo contrato
+              </th>
+              <th className="px-3 py-2 text-left font-semibold">Turno</th>
+              <th className="px-3 py-2 text-left font-semibold">
+                Días laborales
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {(!personalMantenimiento || personalMantenimiento.length === 0) && (
+              <tr>
+                <td
+                  colSpan={7}
+                  className="px-3 py-3 text-center text-slate-500"
+                >
+                  No hay personal registrado.
+                </td>
+              </tr>
+            )}
+
+            {personalMantenimiento?.map((p) => (
+              <tr key={p.personalMantenimientoID} className="border-t">
+                <td className="px-3 py-2">{p.personaID}</td>
+                <td className="px-3 py-2">{p.puesto}</td>
+                <td className="px-3 py-2">
+                  {p.fechaContratacion?.slice(0, 10)}
+                </td>
+                <td className="px-3 py-2">
+                  ${Number(p.sueldo ?? 0).toFixed(2)}
+                </td>
+                <td className="px-3 py-2">{p.tipoContrato}</td>
+                <td className="px-3 py-2">{p.turno}</td>
+                <td className="px-3 py-2">{p.diasLaborales}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <PersonalMantenimientoForm
-        open={formOpen}
-        onClose={() => {
-          setFormOpen(false);
-          setEditing(null);
-        }}
-        onSubmit={handleSubmitForm}
-        initial={editing}
+        open={openForm}
+        onClose={() => setOpenForm(false)}
+        onSubmit={handleSubmit}
       />
     </div>
   );

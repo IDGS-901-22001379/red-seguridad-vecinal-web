@@ -1,3 +1,4 @@
+// src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
@@ -11,6 +12,10 @@ import UsuariosState from "./context/Usuarios/UsuariosState";
 import AvisosState from "./context/Avisos/AvisosState";
 import PerfilState from "./context/Perfil/PerfilState";
 import EstadisticasState from "./context/Estadisticas/EstadisticasState";
+import AmenidadesState from "./context/Amenidades/AmenidadesState";
+import ReservasState from "./context/Reservas/ReservasState";
+import ServiciosState from "./context/Servicios/ServiciosState";
+import ReportesState from "./context/Reportes/ReportesState";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -19,11 +24,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <PerfilState>
           <AvisosState>
             <PagosState>
-              <MapaState>
-                <EstadisticasState>
-                  <RouterProvider router={router} />
-                </EstadisticasState>
-              </MapaState>
+              <ServiciosState>
+                <MapaState>
+                  <EstadisticasState>
+                    <AmenidadesState>
+                      <ReservasState>
+                        <ReportesState>
+                          <RouterProvider router={router} />
+                        </ReportesState>
+                      </ReservasState>
+                    </AmenidadesState>
+                  </EstadisticasState>
+                </MapaState>
+              </ServiciosState>
             </PagosState>
           </AvisosState>
         </PerfilState>
