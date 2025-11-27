@@ -1,4 +1,4 @@
-import { useReducer } from "react";
+import React, { useReducer } from "react";
 import axios from "axios";
 import AvisosContext from "./AvisosContext";
 
@@ -26,97 +26,88 @@ const initialState = {
 
 const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5165/api";
 
-const AvisosState = ({ children }) => {
+const AvisosState = (props) => {
   const [state, dispatch] = useReducer(AvisosReducer, initialState);
 
   const setLoading = (value) => dispatch({ type: SET_LOADING, payload: value });
-
-  const setError = (msg) => dispatch({ type: SET_ERROR, payload: msg });
-
+  const setError = (error) => dispatch({ type: SET_ERROR, payload: error });
   const clearError = () => dispatch({ type: CLEAR_ERROR });
 
   const getAvisos = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await axios.get(`${API}/Avisos`);
+
       dispatch({ type: GET_AVISOS, payload: res.data });
       return res.data;
-    } catch {
-      setError("Error obteniendo avisos.");
+    } catch (err) {
+      setError("Error obteniendo avisos.", err);
       return [];
-    } finally {
-      setLoading(false);
     }
   };
 
   const getAviso = async (id) => {
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await axios.get(`${API}/Avisos/${id}`);
+
       dispatch({ type: GET_AVISO, payload: res.data });
       return res.data;
-    } catch {
-      setError("Error obteniendo el aviso.");
+    } catch (err) {
+      setError("Error obteniendo el aviso.", err);
       return null;
-    } finally {
-      setLoading(false);
     }
   };
 
   const crearAviso = async (data) => {
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await axios.post(`${API}/Avisos`, data);
+
       dispatch({ type: CREATE_AVISO, payload: res.data });
       return res.data;
-    } catch {
-      setError("No se pudo crear el aviso.");
+    } catch (err) {
+      setError("No se pudo crear el aviso.", err);
       return null;
-    } finally {
-      setLoading(false);
     }
   };
 
   const actualizarAviso = async (data) => {
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await axios.put(`${API}/Avisos`, data);
+
       dispatch({ type: UPDATE_AVISO, payload: res.data });
       return res.data;
-    } catch {
-      setError("No se pudo actualizar el aviso.");
+    } catch (err) {
+      setError("No se pudo actualizar el aviso.", err);
       return null;
-    } finally {
-      setLoading(false);
     }
   };
 
   const eliminarAviso = async (id) => {
-    setLoading(true);
     try {
+      setLoading(true);
       await axios.delete(`${API}/Avisos/${id}`);
+
       dispatch({ type: DELETE_AVISO, payload: id });
-      getAvisos();
       return true;
-    } catch {
-      setError("No se pudo eliminar el aviso.");
+    } catch (err) {
+      setError("No se pudo eliminar el aviso.", err);
       return false;
-    } finally {
-      setLoading(false);
     }
   };
 
   const getCategoriasAviso = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await axios.get(`${API}/Avisos/categorias-aviso`);
+
       dispatch({ type: GET_AVISOS_CATEGORIAS, payload: res.data });
       return res.data;
-    } catch {
-      setError("Error obteniendo categorías.");
+    } catch (err) {
+      setError("Error obteniendo categorías de avisos.", err);
       return [];
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -140,7 +131,7 @@ const AvisosState = ({ children }) => {
         setError,
       }}
     >
-      {children}
+      {props.children}
     </AvisosContext.Provider>
   );
 };
