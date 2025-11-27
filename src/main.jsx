@@ -9,18 +9,24 @@ import MapaState from "./context/Mapa/MapaState";
 import PagosState from "./context/Pagos/PagosState";
 import UsuariosState from "./context/Usuarios/UsuariosState";
 import AvisosState from "./context/Avisos/AvisosState";
+import PerfilState from "./context/Perfil/PerfilState";
+import EstadisticasState from "./context/Estadisticas/EstadisticasState";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
       <UsuariosState>
-        <AvisosState>
-          <PagosState>
-            <MapaState>
-              <RouterProvider router={router} />
-            </MapaState>
-          </PagosState>
-        </AvisosState>
+        <PerfilState>
+          <AvisosState>
+            <PagosState>
+              <MapaState>
+                <EstadisticasState>
+                  <RouterProvider router={router} />
+                </EstadisticasState>
+              </MapaState>
+            </PagosState>
+          </AvisosState>
+        </PerfilState>
       </UsuariosState>
     </AuthProvider>
   </React.StrictMode>

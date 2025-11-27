@@ -41,7 +41,7 @@ const AvisosState = (props) => {
       dispatch({ type: GET_AVISOS, payload: res.data });
       return res.data;
     } catch (err) {
-      setError("Error obteniendo avisos.", err);
+      setError("Error obteniendo avisos.", err.message);
       return [];
     }
   };
@@ -54,7 +54,7 @@ const AvisosState = (props) => {
       dispatch({ type: GET_AVISO, payload: res.data });
       return res.data;
     } catch (err) {
-      setError("Error obteniendo el aviso.", err);
+      setError("Error obteniendo el aviso.", err.message);
       return null;
     }
   };
@@ -65,9 +65,10 @@ const AvisosState = (props) => {
       const res = await axios.post(`${API}/Avisos`, data);
 
       dispatch({ type: CREATE_AVISO, payload: res.data });
+      getAvisos();
       return res.data;
     } catch (err) {
-      setError("No se pudo crear el aviso.", err);
+      setError(err.message);
       return null;
     }
   };
@@ -78,9 +79,10 @@ const AvisosState = (props) => {
       const res = await axios.put(`${API}/Avisos`, data);
 
       dispatch({ type: UPDATE_AVISO, payload: res.data });
+      getAvisos();
       return res.data;
     } catch (err) {
-      setError("No se pudo actualizar el aviso.", err);
+      setError("No se pudo actualizar el aviso.", err.message);
       return null;
     }
   };
@@ -91,9 +93,10 @@ const AvisosState = (props) => {
       await axios.delete(`${API}/Avisos/${id}`);
 
       dispatch({ type: DELETE_AVISO, payload: id });
+      getAvisos();
       return true;
     } catch (err) {
-      setError("No se pudo eliminar el aviso.", err);
+      setError("No se pudo eliminar el aviso.", err.message);
       return false;
     }
   };
@@ -106,7 +109,7 @@ const AvisosState = (props) => {
       dispatch({ type: GET_AVISOS_CATEGORIAS, payload: res.data });
       return res.data;
     } catch (err) {
-      setError("Error obteniendo categorías de avisos.", err);
+      setError("Error obteniendo categorías de avisos.", err.message);
       return [];
     }
   };

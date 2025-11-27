@@ -1,8 +1,11 @@
 import { useEffect, useState, useContext } from "react";
+import { useAuth } from "@/context/AuthContext";
 import UsuariosContext from "@/context/Usuarios/UsuariosContext";
 import UsuarioForm from "./UsuarioForm";
 
 export default function UsuariosList() {
+  const { user: authUser } = useAuth(); // Obtener usuario logueado
+
   const {
     usuarios,
     tiposUsuario: tipos,
@@ -52,8 +55,6 @@ export default function UsuariosList() {
 
   useEffect(() => {
     if (usuarioSeleccionado) {
-      // Si estamos en modo edición y el usuario seleccionado coincide
-      // O si estamos iniciando una edición
       if (!editing || editing.usuarioID === usuarioSeleccionado.usuarioID) {
         setEditing(usuarioSeleccionado);
       }
@@ -70,6 +71,7 @@ export default function UsuariosList() {
     }
     try {
       await eliminarUsuario(u.usuarioID);
+      await listarUsuarios();
     } catch (err) {
       console.error("Error eliminando usuario:", err);
     }
@@ -85,6 +87,7 @@ export default function UsuariosList() {
     }
     try {
       await reactivarUsuario(u.usuarioID);
+      await listarUsuarios();
     } catch (err) {
       console.error("Error reactivando usuario:", err);
     }
@@ -120,8 +123,8 @@ export default function UsuariosList() {
           updateData.ultimosDigitos = "";
         }
 
-        console.log("Datos de actualización:", updateData);
         await actualizarUsuario(updateData);
+        location.reload();
       } else {
         const usuarioData = {
           tipoUsuarioID: parseInt(formData.tipoUsuarioID) || 1,
@@ -138,10 +141,10 @@ export default function UsuariosList() {
           fechaVencimiento: formData.fechaVencimiento || "",
         };
 
-        console.log("Datos a enviar al API:", usuarioData);
         await registrarUsuario(usuarioData);
       }
 
+      await listarUsuarios();
       setEditing(null);
     } catch (err) {
       console.error("Error guardando usuario:", err);
@@ -149,8 +152,14 @@ export default function UsuariosList() {
   };
 
   const usuariosFiltrados = usuarios.filter((u) => {
-    const term = search.trim().toLowerCase();
+    // Excluir usuario logueado
+    const userLoggedId = authUser?.id || authUser?.usuarioID;
+    if (userLoggedId && u.usuarioID === userLoggedId) {
+      return false;
+    }
 
+    // Filtro de búsqueda
+    const term = search.trim().toLowerCase();
     if (term) {
       const fullText = (
         (u.nombre || "") +
@@ -176,6 +185,7 @@ export default function UsuariosList() {
       if (!fullText.includes(normalizedTerm)) return false;
     }
 
+    // Filtro por tipo
     if (filtroTipo) {
       const tipoUsuario = (u.tipoUsuario || "").toLowerCase().trim();
       const filtro = filtroTipo.toLowerCase().trim();
@@ -183,6 +193,7 @@ export default function UsuariosList() {
       if (tipoUsuario !== filtro) return false;
     }
 
+    // Filtro por estado
     if (filtroEstado === "activos" && !u.activo) return false;
     if (filtroEstado === "inactivos" && u.activo) return false;
 
@@ -326,7 +337,7 @@ export default function UsuariosList() {
                           <button
                             type="button"
                             onClick={() => handleEdit(u)}
-                            className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-sky-300 text-sky-700 hover:bg-sky-50"
+                            className="px-3 py-1 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
                           >
                             Editar
                           </button>
@@ -335,7 +346,7 @@ export default function UsuariosList() {
                             <button
                               type="button"
                               onClick={() => handleDelete(u)}
-                              className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-red-300 text-red-700 hover:bg-red-50"
+                              className="px-3 py-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700"
                             >
                               Eliminar
                             </button>
@@ -343,7 +354,7 @@ export default function UsuariosList() {
                             <button
                               type="button"
                               onClick={() => handleReactivate(u)}
-                              className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                              className="px-3 py-1 rounded-lg bg-emerald-700 text-white hover:bg-emerald-600"
                             >
                               Reactivar
                             </button>

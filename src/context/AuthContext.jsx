@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
-        alert("Error", error);
+        console.error("Error parsing stored user:", error);
         localStorage.removeItem("user");
       }
     }
@@ -39,11 +39,30 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || "Credenciales incorrectas");
+        let errorMessage = "Credenciales incorrectas";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // Si no es JSON, intentar leer como texto
+          const errorText = await response.text();
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+
+      // Validar rol permitido
+      const tiposPermitidos = ["Admin", "Guardia"];
+      if (!tiposPermitidos.includes(data.tipoUsuario)) {
+        // Retornar objeto con error específico
+        return {
+          success: false,
+          error: "Acceso restringido. Solo personal autorizado puede acceder.",
+          errorType: "ROLE_DENIED",
+        };
+      }
 
       const userData = {
         id: data.id,
@@ -58,14 +77,16 @@ export const AuthProvider = ({ children }) => {
       };
 
       setUser(userData);
-
       localStorage.setItem("user", JSON.stringify(userData));
 
-      return true;
+      return { success: true };
     } catch (error) {
       console.error("Error en login:", error);
-      alert(error.message || "Error de conexión con el servidor");
-      return false;
+      return {
+        success: false,
+        error: error.message || "Error de conexión con el servidor",
+        errorType: "AUTH_ERROR",
+      };
     } finally {
       setLoading(false);
     }
@@ -76,12 +97,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
   };
 
+  const hasRole = (roles) => {
+    if (!user) return false;
+    return roles.includes(user.tipoUsuario);
+  };
+
   const value = {
     user,
     login,
     logout,
     loading,
     isAuthenticated: !!user,
+    hasRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

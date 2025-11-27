@@ -103,6 +103,7 @@ const UsuariosState = ({ children }) => {
         type: USUARIOS_ACTIONS.TIPOS_USUARIO,
         payload: res.data,
       });
+      listarUsuarios();
     } catch (err) {
       dispatch({
         type: USUARIOS_ACTIONS.ERROR,
