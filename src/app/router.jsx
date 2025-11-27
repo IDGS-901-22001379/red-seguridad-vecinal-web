@@ -40,10 +40,10 @@ import PersonalMantenimientoList from "../pages/servicios/PersonalMantenimientoL
 // Solicitudes de servicio
 import SolicitudesList from "../pages/servicios/SolicitudesList";
 
-// Amenidades
+// *** Amenidades ***
 import AmenidadesList from "../pages/amenidades/AmenidadesList";
 
-// Reservas
+// *** Reservas de amenidades ***
 import ReservasList from "../pages/reservas/ReservasList";
 
 import NotFound from "../pages/misc/NotFound";
@@ -101,15 +101,15 @@ export const router = createBrowserRouter([
         element: <MapaAdmin />,
       },
 
-      // Amenidades
+      // *** Amenidades (ruta para el sidebar) ***
       {
         path: "admin/amenidades",
         element: <AmenidadesList />,
       },
 
-      // Reservas de amenidades
+      // *** Reservas de amenidades ***
       {
-        path: "admin/reservas",
+        path: "admin/amenidades/reservas",
         element: <ReservasList />,
       },
 

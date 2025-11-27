@@ -1,65 +1,54 @@
 // src/services/reservas.api.js
 import { http } from "./http";
 
-const BASE = "/Reservas";
+const BASE_URL = "/Reservas";
 
 /**
  * Servicio para consumir el backend de Reservas.
- * Usa la base /api configurada en http.js
+ *
+ * Backend (.NET):
+ *  GET    /api/Reservas
+ *  GET    /api/Reservas/{id}
+ *  GET    /api/Reservas/usuario/{usuarioId}
+ *  POST   /api/Reservas
+ *  PUT    /api/Reservas/{id}/cancelar
+ *  PUT    /api/Reservas/{id}/estado
  */
-const ReservasAPI = {
-  /**
-   * Lista todas las reservas (uso admin).
-   */
-  getAll(signal) {
-    return http.get(BASE, { signal });
+export const ReservasAPI = {
+  /** Obtiene todas las reservas (vista administrador). */
+  async getAll(signal) {
+    const data = await http.get(BASE_URL, { signal });
+    return data; // ⬅️ ya NO usamos res.data
   },
 
-  /**
-   * Obtiene las reservas de un usuario específico.
-   * @param {number} usuarioId
-   */
-  getByUsuario(usuarioId, signal) {
-    return http.get(`${BASE}/usuario/${usuarioId}`, { signal });
+  /** Obtiene las reservas de un usuario específico. */
+  async getByUsuario(usuarioId, signal) {
+    const data = await http.get(`${BASE_URL}/usuario/${usuarioId}`, { signal });
+    return data;
   },
 
-  /**
-   * Obtiene una reserva por id.
-   * @param {number} id
-   */
-  getById(id, signal) {
-    return http.get(`${BASE}/${id}`, { signal });
+  /** Obtiene una reserva por ID. */
+  async getById(id, signal) {
+    const data = await http.get(`${BASE_URL}/${id}`, { signal });
+    return data;
   },
 
-  /**
-   * Crea una nueva reserva.
-   * body esperado:
-   * {
-   *   usuarioID,
-   *   amenidadID,
-   *   fechaReserva: "YYYY-MM-DD",
-   *   horaInicio: "HH:mm",
-   *   horaFin: "HH:mm",
-   *   motivo: "..."
-   * }
-   */
-  create(data) {
-    return http.post(BASE, data);
+  /** Crea una nueva reserva. */
+  async create(body) {
+    const data = await http.post(BASE_URL, body);
+    return data;
   },
 
-  /**
-   * Cancela una reserva (PUT /api/Reservas/{id}/cancelar)
-   */
-  cancelar(id) {
-    return http.put(`${BASE}/${id}/cancelar`);
+  /** Cancela una reserva. */
+  async cancelar(id) {
+    const data = await http.put(`${BASE_URL}/${id}/cancelar`);
+    return data;
   },
 
-  /**
-   * Cambia el estado de una reserva (aprobada, rechazada, etc.)
-   * body: { estado: "string" }
-   */
-  actualizarEstado(id, estado) {
-    return http.put(`${BASE}/${id}/estado`, { estado });
+  /** Cambia el estado de una reserva. */
+  async actualizarEstado(id, estado) {
+    const data = await http.put(`${BASE_URL}/${id}/estado`, { estado });
+    return data;
   },
 };
 

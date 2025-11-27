@@ -1,73 +1,64 @@
 // src/context/Reservas/ReservasState.jsx
-import { useReducer } from "react";
+import { useCallback, useReducer } from "react";
 import ReservasContext from "./ReservasContext";
-import ReservasReducer, { reservasInitialState } from "./ReservasReducer";
-import {
-  RESERVAS_SET_LOADING,
-  RESERVAS_SET_ERROR,
-  RESERVAS_SET_LIST,
-  RESERVAS_SET_USUARIO_LIST,
-  RESERVAS_ADD,
-  RESERVAS_UPDATE,
-  RESERVAS_SET_SELECTED,
-} from "./ActionsTypes";
+import ReservasReducer, { initialState } from "./ReservasReducer";
+import Types from "./ActionsTypes";
 import ReservasAPI from "../../services/reservas.api";
 
-const ReservasState = ({ children }) => {
-  const [state, dispatch] = useReducer(ReservasReducer, reservasInitialState);
+export default function ReservasState({ children }) {
+  const [state, dispatch] = useReducer(ReservasReducer, initialState);
 
-  // ========================
-  // helpers
-  // ========================
   const setLoading = (value) =>
-    dispatch({ type: RESERVAS_SET_LOADING, payload: value });
+    dispatch({ type: Types.SET_LOADING, payload: value });
 
   const setError = (err) =>
     dispatch({
-      type: RESERVAS_SET_ERROR,
-      payload: err?.message || "Ocurrió un error al cargar reservas",
+      type: Types.SET_ERROR,
+      payload:
+        err?.response?.data?.message ||
+        err?.message ||
+        "Ocurrió un error con las reservas",
     });
 
-  // ========================
-  // acciones
-  // ========================
-
-  // Admin: obtener todas las reservas
-  const fetchAll = async () => {
+  // ==========================
+  // Leer reservas
+  // ==========================
+  const fetchReservas = useCallback(async () => {
     try {
       setLoading(true);
       const data = await ReservasAPI.getAll();
-      dispatch({ type: RESERVAS_SET_LIST, payload: data || [] });
+      dispatch({ type: Types.SET_RESERVAS, payload: data });
     } catch (err) {
       console.error(err);
       setError(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Usuario: obtener reservas de un usuario
-  const fetchByUsuario = async (usuarioId) => {
-    if (!usuarioId) return;
+  const fetchReservasByUsuario = useCallback(async (usuarioId) => {
     try {
       setLoading(true);
       const data = await ReservasAPI.getByUsuario(usuarioId);
-      dispatch({ type: RESERVAS_SET_USUARIO_LIST, payload: data || [] });
+      dispatch({ type: Types.SET_RESERVAS_USUARIO, payload: data });
     } catch (err) {
       console.error(err);
       setError(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Crear nueva reserva
-  const createReserva = async (payload) => {
+  // ==========================
+  // Crear / cancelar / cambiar estado
+  // ==========================
+
+  const crearReserva = async (payload) => {
     try {
       setLoading(true);
-      const nueva = await ReservasAPI.create(payload);
-      dispatch({ type: RESERVAS_ADD, payload: nueva });
-      return nueva;
+      await ReservasAPI.create(payload);
+
+      await fetchReservas();
     } catch (err) {
       console.error(err);
       setError(err);
@@ -77,13 +68,11 @@ const ReservasState = ({ children }) => {
     }
   };
 
-  // Cancelar reserva
   const cancelarReserva = async (id) => {
     try {
       setLoading(true);
-      const actualizada = await ReservasAPI.cancelar(id);
-      dispatch({ type: RESERVAS_UPDATE, payload: actualizada });
-      return actualizada;
+      await ReservasAPI.cancelar(id);
+      await fetchReservas();
     } catch (err) {
       console.error(err);
       setError(err);
@@ -93,13 +82,12 @@ const ReservasState = ({ children }) => {
     }
   };
 
-  // Cambiar estado (aprobada, rechazado, etc.)
-  const cambiarEstadoReserva = async (id, estado) => {
+  const actualizarEstadoReserva = async (id, estado) => {
     try {
       setLoading(true);
-      const actualizada = await ReservasAPI.actualizarEstado(id, estado);
-      dispatch({ type: RESERVAS_UPDATE, payload: actualizada });
-      return actualizada;
+      await ReservasAPI.actualizarEstado(id, estado);
+
+      await fetchReservas();
     } catch (err) {
       console.error(err);
       setError(err);
@@ -109,28 +97,18 @@ const ReservasState = ({ children }) => {
     }
   };
 
-  const seleccionarReserva = (reserva) => {
-    dispatch({ type: RESERVAS_SET_SELECTED, payload: reserva });
-  };
-
-  // ========================
-  // provider
-  // ========================
   return (
     <ReservasContext.Provider
       value={{
         ...state,
-        fetchAll,
-        fetchByUsuario,
-        createReserva,
+        fetchReservas,
+        fetchReservasByUsuario,
+        crearReserva,
         cancelarReserva,
-        cambiarEstadoReserva,
-        seleccionarReserva,
+        actualizarEstadoReserva,
       }}
     >
       {children}
     </ReservasContext.Provider>
   );
-};
-
-export default ReservasState;
+}

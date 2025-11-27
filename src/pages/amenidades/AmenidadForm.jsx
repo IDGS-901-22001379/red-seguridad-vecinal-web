@@ -7,6 +7,7 @@ export default function AmenidadForm({
   onSubmit,
   tiposAmenidad = [],
   initial,
+  saving = false,
 }) {
   const [form, setForm] = useState({
     tipoAmenidadID: "",
@@ -17,6 +18,7 @@ export default function AmenidadForm({
 
   const [errors, setErrors] = useState({});
 
+  // Carga inicial / edición
   useEffect(() => {
     if (initial) {
       setForm({
@@ -36,6 +38,7 @@ export default function AmenidadForm({
     setErrors({});
   }, [initial, open]);
 
+  // Tipo seleccionado para mostrar horario sugerido
   const tipoSeleccionado = useMemo(
     () =>
       tiposAmenidad.find(
@@ -96,6 +99,7 @@ export default function AmenidadForm({
             type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+            disabled={saving}
           >
             ×
           </button>
@@ -112,6 +116,7 @@ export default function AmenidadForm({
               name="tipoAmenidadID"
               value={form.tipoAmenidadID}
               onChange={handleChange}
+              disabled={saving}
               className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             >
               <option value="">Selecciona un tipo...</option>
@@ -138,6 +143,7 @@ export default function AmenidadForm({
               name="nombre"
               value={form.nombre}
               onChange={handleChange}
+              disabled={saving}
               className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Ej. Gimnasio Central"
             />
@@ -156,6 +162,7 @@ export default function AmenidadForm({
               name="ubicacion"
               value={form.ubicacion}
               onChange={handleChange}
+              disabled={saving}
               className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Ej. Planta baja, exterior, etc."
             />
@@ -174,6 +181,7 @@ export default function AmenidadForm({
               name="capacidad"
               value={form.capacidad}
               onChange={handleChange}
+              disabled={saving}
               className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Ej. 20"
             />
@@ -203,14 +211,20 @@ export default function AmenidadForm({
               type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 text-slate-700 hover:bg-slate-50"
+              disabled={saving}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700"
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+              disabled={saving}
             >
-              {initial ? "Guardar cambios" : "Registrar amenidad"}
+              {saving
+                ? "Guardando..."
+                : initial
+                ? "Guardar cambios"
+                : "Registrar amenidad"}
             </button>
           </div>
         </form>

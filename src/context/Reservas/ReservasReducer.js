@@ -1,66 +1,59 @@
 // src/context/Reservas/ReservasReducer.js
-import {
-  RESERVAS_SET_LOADING,
-  RESERVAS_SET_ERROR,
-  RESERVAS_SET_LIST,
-  RESERVAS_SET_USUARIO_LIST,
-  RESERVAS_ADD,
-  RESERVAS_UPDATE,
-  RESERVAS_SET_SELECTED,
-} from "./ActionsTypes";
+import Types from "./ActionsTypes";
 
-export const reservasInitialState = {
-  reservas: [], // lista general (admin)
-  reservasUsuario: [], // lista para un usuario
-  selected: null, // reserva seleccionada (detalle / editar)
+export const initialState = {
+  reservas: [], // todas las reservas (admin)
+  reservasUsuario: [], // reservas de un usuario
   loading: false,
   error: null,
 };
 
 export default function ReservasReducer(state, action) {
   switch (action.type) {
-    case RESERVAS_SET_LOADING:
-      return { ...state, loading: action.payload };
-
-    case RESERVAS_SET_ERROR:
-      return { ...state, error: action.payload, loading: false };
-
-    case RESERVAS_SET_LIST:
+    case Types.SET_LOADING:
       return {
         ...state,
-        reservas: action.payload,
+        loading: action.payload,
+      };
+
+    case Types.SET_ERROR:
+      return {
+        ...state,
+        error: action.payload || "Ocurrió un error al cargar las reservas",
+        loading: false,
+      };
+
+    case Types.SET_RESERVAS:
+      return {
+        ...state,
+        reservas: Array.isArray(action.payload) ? action.payload : [],
         loading: false,
         error: null,
       };
 
-    case RESERVAS_SET_USUARIO_LIST:
+    case Types.SET_RESERVAS_USUARIO:
       return {
         ...state,
-        reservasUsuario: action.payload,
+        reservasUsuario: Array.isArray(action.payload) ? action.payload : [],
         loading: false,
         error: null,
       };
 
-    case RESERVAS_ADD:
+    case Types.ADD_RESERVA:
       return {
         ...state,
-        reservas: [action.payload, ...state.reservas],
-        reservasUsuario: [action.payload, ...state.reservasUsuario],
+        reservas: [action.payload, ...(state.reservas || [])],
+        loading: false,
       };
 
-    case RESERVAS_UPDATE:
+    case Types.UPDATE_RESERVA:
       return {
         ...state,
-        reservas: state.reservas.map((r) =>
+        reservas: (state.reservas || []).map((r) =>
           r.reservaID === action.payload.reservaID ? action.payload : r
         ),
-        reservasUsuario: state.reservasUsuario.map((r) =>
-          r.reservaID === action.payload.reservaID ? action.payload : r
-        ),
+        loading: false,
       };
-
-    case RESERVAS_SET_SELECTED:
-      return { ...state, selected: action.payload };
 
     default:
       return state;

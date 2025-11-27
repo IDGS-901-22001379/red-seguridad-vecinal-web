@@ -1,27 +1,43 @@
 // src/pages/amenidades/AmenidadesList.jsx
-import { useContext, useEffect, useMemo, useState } from "react";
-import AmenidadesContext from "../../context/Amenidades/AmenidadesContext";
+import { useEffect, useMemo, useState } from "react";
+import { useAmenidades } from "../../context/Amenidades/AmenidadesContext";
 import AmenidadForm from "./AmenidadForm";
 
 export default function AmenidadesList() {
   const {
     amenidades,
     tiposAmenidad,
-    listarAmenidades,
-    listarTiposAmenidad,
-    registrarAmenidad,
+    loading,
+    error,
+    cargarAmenidades,
+    cargarTiposAmenidad,
+    crearAmenidad,
     actualizarAmenidad,
-    errorAmenidades,
-  } = useContext(AmenidadesContext);
+    clearError,
+  } = useAmenidades();
 
   const [busqueda, setBusqueda] = useState("");
   const [openForm, setOpenForm] = useState(false);
   const [amenidadEdit, setAmenidadEdit] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [localError, setLocalError] = useState("");
 
+  // ==========================
+  // Cargar datos iniciales
+  // ==========================
   useEffect(() => {
-    listarAmenidades();
-    listarTiposAmenidad();
-  }, [listarAmenidades, listarTiposAmenidad]);
+    const loadData = async () => {
+      try {
+        clearError();
+        setLocalError("");
+        await Promise.all([cargarAmenidades(), cargarTiposAmenidad()]);
+      } catch (err) {
+        console.error("Error al cargar datos de amenidades:", err);
+      }
+    };
+
+    loadData();
+  }, [cargarAmenidades, cargarTiposAmenidad, clearError]);
 
   const handleNueva = () => {
     setAmenidadEdit(null);
@@ -39,15 +55,36 @@ export default function AmenidadesList() {
   };
 
   const handleSubmitForm = async (values) => {
-    if (amenidadEdit?.amenidadID) {
-      await actualizarAmenidad(amenidadEdit.amenidadID, values);
-    } else {
-      await registrarAmenidad(values);
+    try {
+      setSaving(true);
+      setLocalError("");
+      clearError();
+
+      if (amenidadEdit?.amenidadID) {
+        // ✏️ Actualizar solo esa amenidad y refrescar fila en el estado
+        await actualizarAmenidad(amenidadEdit.amenidadID, values);
+      } else {
+        // ➕ Crear y agregar al estado con datos completos
+        await crearAmenidad(values);
+      }
+
+      setOpenForm(false);
+      setAmenidadEdit(null);
+    } catch (err) {
+      console.error(err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Error al guardar la amenidad.";
+      setLocalError(msg);
+    } finally {
+      setSaving(false);
     }
-    setOpenForm(false);
-    setAmenidadEdit(null);
   };
 
+  // ==========================
+  // Filtro de búsqueda
+  // ==========================
   const amenidadesFiltradas = useMemo(() => {
     const term = busqueda.trim().toLowerCase();
     if (!term) return amenidades || [];
@@ -61,9 +98,14 @@ export default function AmenidadesList() {
     });
   }, [busqueda, amenidades]);
 
+  const errorAmenidades = localError || error;
+
+  // ==========================
+  // Render
+  // ==========================
   return (
     <div className="p-4 md:p-6">
-      {/* Encabezado */}
+      {/* Encabezado de página */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">Amenidades</h1>
@@ -77,7 +119,7 @@ export default function AmenidadesList() {
           <div className="relative">
             <input
               type="text"
-              className="w-full sm:w-64 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full sm:w-64 border border-slate-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Buscar por nombre, tipo o ubicación..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
@@ -90,7 +132,8 @@ export default function AmenidadesList() {
           <button
             type="button"
             onClick={handleNueva}
-            className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
+            disabled={loading}
           >
             + Nueva amenidad
           </button>
@@ -104,35 +147,34 @@ export default function AmenidadesList() {
         </div>
       )}
 
+      {/* Loading */}
+      {loading && (
+        <div className="mb-4 text-sm text-slate-500">
+          Cargando amenidades...
+        </div>
+      )}
+
       {/* Tabla */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50">
+            {/* 🔹 Encabezado verde tipo QR */}
+            <thead className="bg-emerald-700 text-white text-xs md:text-sm">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">
-                  Nombre
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">
-                  Tipo
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">
-                  Ubicación
-                </th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-600">
+                <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+                <th className="px-4 py-3 text-left font-semibold">Tipo</th>
+                <th className="px-4 py-3 text-left font-semibold">Ubicación</th>
+                <th className="px-4 py-3 text-center font-semibold">
                   Capacidad
                 </th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-600">
-                  Horario
-                </th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-600">
-                  Estado
-                </th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-600">
+                <th className="px-4 py-3 text-center font-semibold">Horario</th>
+                <th className="px-4 py-3 text-center font-semibold">Estado</th>
+                <th className="px-4 py-3 text-center font-semibold">
                   Acciones
                 </th>
               </tr>
             </thead>
+
             <tbody>
               {amenidadesFiltradas.length === 0 ? (
                 <tr>
@@ -140,14 +182,14 @@ export default function AmenidadesList() {
                     colSpan={7}
                     className="px-4 py-6 text-center text-slate-500"
                   >
-                    No hay amenidades registradas.
+                    {loading ? "Cargando..." : "No hay amenidades registradas."}
                   </td>
                 </tr>
               ) : (
                 amenidadesFiltradas.map((a) => (
                   <tr
                     key={a.amenidadID}
-                    className="border-t border-slate-100 hover:bg-slate-50/60"
+                    className="border-t border-slate-100 hover:bg-emerald-50/70 transition-colors"
                   >
                     <td className="px-4 py-3 text-slate-800 font-medium">
                       {a.nombre}
@@ -165,11 +207,11 @@ export default function AmenidadesList() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {a.activo ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
                           Activa
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-100">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
                           Inactiva
                         </span>
                       )}
@@ -178,9 +220,10 @@ export default function AmenidadesList() {
                       <button
                         type="button"
                         onClick={() => handleEditar(a)}
-                        className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-700 hover:bg-slate-100"
+                        className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                        disabled={saving}
                       >
-                        ✏️ Editar
+                        Editar
                       </button>
                     </td>
                   </tr>
@@ -199,6 +242,7 @@ export default function AmenidadesList() {
           onSubmit={handleSubmitForm}
           tiposAmenidad={tiposAmenidad}
           initial={amenidadEdit}
+          saving={saving}
         />
       )}
     </div>
