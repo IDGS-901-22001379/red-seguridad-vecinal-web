@@ -2,6 +2,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import ReservasContext from "../../context/Reservas/ReservasContext";
 import { useAmenidades } from "../../context/Amenidades/AmenidadesContext";
+import { UsuariosAPI } from "../../services/usuarios.api";
 import ReservaForm from "./ReservaForm";
 
 export default function ReservasList() {
@@ -16,6 +17,9 @@ export default function ReservasList() {
   } = useContext(ReservasContext);
 
   const { amenidades, cargarAmenidades } = useAmenidades();
+
+  const [usuarios, setUsuarios] = useState([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
 
   const [busqueda, setBusqueda] = useState("");
   const [openForm, setOpenForm] = useState(false);
@@ -34,6 +38,34 @@ export default function ReservasList() {
     };
     load();
   }, [fetchReservas, cargarAmenidades]);
+
+  // Cargar usuarios desde la API
+  useEffect(() => {
+    const loadUsuarios = async () => {
+      try {
+        setLoadingUsuarios(true);
+
+        const data = await UsuariosAPI.list();
+
+        const normalizados = (data || []).map((u) => {
+          const nombreCompleto =
+            u.nombreCompleto ||
+            [u.nombre, u.apellidoPaterno, u.apellidoMaterno]
+              .filter(Boolean)
+              .join(" ");
+
+          return { ...u, nombreCompleto };
+        });
+
+        setUsuarios(normalizados);
+      } catch (err) {
+        console.error("Error al cargar usuarios:", err);
+      } finally {
+        setLoadingUsuarios(false);
+      }
+    };
+    loadUsuarios();
+  }, []);
 
   const errorFinal = localError || error;
 
@@ -109,7 +141,7 @@ export default function ReservasList() {
     }
   };
 
-  // Filtro de búsqueda
+  // Filtro de búsqueda (sin casa, pero con correo)
   const reservasFiltradas = useMemo(() => {
     const term = busqueda.trim().toLowerCase();
     if (!term) return reservas || [];
@@ -118,7 +150,7 @@ export default function ReservasList() {
         r.amenidadNombre?.toLowerCase().includes(term) ||
         r.tipoAmenidad?.toLowerCase().includes(term) ||
         r.nombreUsuario?.toLowerCase().includes(term) ||
-        r.numeroCasa?.toLowerCase().includes(term) ||
+        r.emailUsuario?.toLowerCase().includes(term) ||
         r.motivo?.toLowerCase().includes(term)
       );
     });
@@ -172,7 +204,7 @@ export default function ReservasList() {
             <input
               type="text"
               className="w-full sm:w-72 border border-slate-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="Buscar por amenidad, usuario, casa o motivo..."
+              placeholder="Buscar por amenidad, usuario, correo o motivo..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
@@ -185,7 +217,7 @@ export default function ReservasList() {
             type="button"
             onClick={handleNueva}
             className="inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
-            disabled={loading}
+            disabled={loading || loadingUsuarios}
           >
             + Nueva reserva
           </button>
@@ -200,15 +232,16 @@ export default function ReservasList() {
       )}
 
       {/* Loading */}
-      {loading && (
-        <div className="mb-4 text-sm text-slate-500">Cargando reservas...</div>
+      {(loading || loadingUsuarios) && (
+        <div className="mb-4 text-sm text-slate-500">
+          Cargando reservas y usuarios...
+        </div>
       )}
 
       {/* Tabla */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            {/* Encabezado verde */}
             <thead className="bg-emerald-700 text-white text-xs md:text-sm">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">Amenidad</th>
@@ -232,7 +265,9 @@ export default function ReservasList() {
                     colSpan={9}
                     className="px-4 py-6 text-center text-slate-500"
                   >
-                    {loading ? "Cargando..." : "No hay reservas registradas."}
+                    {loading || loadingUsuarios
+                      ? "Cargando..."
+                      : "No hay reservas registradas."}
                   </td>
                 </tr>
               ) : (
@@ -308,6 +343,7 @@ export default function ReservasList() {
           onClose={handleCerrarForm}
           onSubmit={handleSubmitForm}
           amenidades={amenidades}
+          usuarios={usuarios}
           saving={saving}
         />
       )}

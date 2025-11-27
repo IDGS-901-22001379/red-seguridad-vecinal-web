@@ -13,12 +13,15 @@ const BASE_URL = "/Reservas";
  *  POST   /api/Reservas
  *  PUT    /api/Reservas/{id}/cancelar
  *  PUT    /api/Reservas/{id}/estado
+ *
+ *  Además agregamos un helper para obtener usuarios
+ *  con nombre completo, útil para el buscador del formulario.
  */
 export const ReservasAPI = {
   /** Obtiene todas las reservas (vista administrador). */
   async getAll(signal) {
     const data = await http.get(BASE_URL, { signal });
-    return data; // ⬅️ ya NO usamos res.data
+    return data;
   },
 
   /** Obtiene las reservas de un usuario específico. */
@@ -49,6 +52,25 @@ export const ReservasAPI = {
   async actualizarEstado(id, estado) {
     const data = await http.put(`${BASE_URL}/${id}/estado`, { estado });
     return data;
+  },
+
+  // 🔹 Helper extra: traer usuarios listos para buscador por nombre
+  async getUsuariosParaSelector(signal) {
+    // Usa el endpoint de usuarios: GET /Usuarios
+    const usuarios = await http.get("/Usuarios", { signal });
+
+    return (usuarios || []).map((u) => {
+      const nombreCompleto =
+        u.nombreCompleto ||
+        [u.nombre, u.apellidoPaterno, u.apellidoMaterno]
+          .filter(Boolean)
+          .join(" ");
+
+      return {
+        ...u,
+        nombreCompleto,
+      };
+    });
   },
 };
 
