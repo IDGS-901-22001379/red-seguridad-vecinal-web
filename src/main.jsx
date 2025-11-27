@@ -14,13 +14,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
       <UsuariosState>
-        <AvisosState>
-          <PagosState>
-            <MapaState>
+        <PagosState>
+          <MapaState>
+            <AvisosState>
               <RouterProvider router={router} />
-            </MapaState>
-          </PagosState>
-        </AvisosState>
+            </AvisosState>
+          </MapaState>
+        </PagosState>
       </UsuariosState>
     </AuthProvider>
   </React.StrictMode>
