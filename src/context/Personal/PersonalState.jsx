@@ -1,10 +1,10 @@
-// context/Servicios/ServiciosState.jsx
 import React, { useReducer } from "react";
 import PersonalContext from "./PersonalContext";
 import {
   GET_PERSONAL_MANTENIMIENTO,
   GET_PERSONAL_MANTENIMIENTO_BY_ID,
   CREAR_PERSONAL_MANTENIMIENTO,
+  ACTUALIZAR_PERSONAL_MANTENIMIENTO,
   SET_LOADING,
   SET_ERROR,
   CLEAR_ERROR,
@@ -94,6 +94,57 @@ const ServiciosState = (props) => {
     }
   };
 
+  const actualizarPersonalMantenimiento = async (id, personalData) => {
+    try {
+      setLoading(true);
+      const res = await axios.patch(`${API}/Servicios/personal-mantenimiento/${id}`, personalData);
+      
+      dispatch({
+        type: ACTUALIZAR_PERSONAL_MANTENIMIENTO,
+        payload: res.data,
+      });
+
+      await getPersonalMantenimiento();
+
+      setNotification({
+        type: "success",
+        message: "Personal de mantenimiento actualizado exitosamente",
+      });
+
+      return res.data;
+    } catch (error) {
+      console.error("Error al actualizar personal de mantenimiento:", error);
+      setError("No se pudo actualizar el personal de mantenimiento.");
+      return null;
+    }
+  };
+
+  const actualizarPersonalMantenimientoCompleto = async (id, personalData) => {
+  try {
+    setLoading(true);
+    
+    console.log('Enviando datos de actualización completa:', personalData);
+    
+    const res = await axios.put(`${API}/Servicios/personal-mantenimiento/${id}/completo`, personalData);
+    
+    console.log('Respuesta del servidor (completo):', res.data);
+    
+    // Recargar la lista para ver los cambios
+    await getPersonalMantenimiento();
+
+    setNotification({
+      type: "success",
+      message: "Personal de mantenimiento actualizado exitosamente",
+    });
+
+    return res.data;
+  } catch (error) {
+    console.error("Error al actualizar personal de mantenimiento completo:", error);
+    setError("No se pudo actualizar el personal de mantenimiento.");
+    return null;
+  }
+};
+
   return (
     <PersonalContext.Provider
       value={{
@@ -106,6 +157,8 @@ const ServiciosState = (props) => {
         getPersonalMantenimiento,
         getPersonalMantenimientoById,
         crearPersonalMantenimiento,
+        actualizarPersonalMantenimiento,
+        actualizarPersonalMantenimientoCompleto,
         setError,
         clearError,
         setNotification,

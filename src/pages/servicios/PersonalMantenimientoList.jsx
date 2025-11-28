@@ -10,6 +10,7 @@ export default function PersonalMantenimientoList() {
     notification,
     getPersonalMantenimiento,
     crearPersonalMantenimiento,
+    actualizarPersonalMantenimientoCompleto, // CAMBIAR: Usar la función completa
     clearError,
     clearNotification,
   } = useContext(PersonalContext);
@@ -17,6 +18,7 @@ export default function PersonalMantenimientoList() {
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState(null);
+  const [mode, setMode] = useState("create");
 
   useEffect(() => {
     getPersonalMantenimiento();
@@ -45,11 +47,13 @@ export default function PersonalMantenimientoList() {
 
   const abrirNuevo = () => {
     setViewing(null);
+    setMode("create");
     setFormOpen(true);
   };
 
   const abrirDetalle = (persona) => {
     setViewing(persona);
+    setMode("view");
     setFormOpen(true);
   };
 
@@ -60,6 +64,18 @@ export default function PersonalMantenimientoList() {
       setViewing(null);
     } catch (err) {
       console.error("Error al guardar:", err);
+    }
+  };
+
+  // CORREGIDO: Usar la función COMPLETA que actualiza tanto persona como personal
+  const handleUpdateForm = async (id, payload) => {
+    try {
+      await actualizarPersonalMantenimientoCompleto(id, payload); // CAMBIAR AQUÍ
+      setFormOpen(false);
+      setViewing(null);
+      setMode("create");
+    } catch (err) {
+      console.error("Error al actualizar:", err);
     }
   };
 
@@ -201,10 +217,13 @@ export default function PersonalMantenimientoList() {
         onClose={() => {
           setFormOpen(false);
           setViewing(null);
+          setMode("create");
         }}
         onSubmit={handleSubmitForm}
+        onUpdate={handleUpdateForm}
         initial={viewing}
-        mode={viewing ? "view" : "create"}
+        mode={mode}
+        onModificar={() => setMode("edit")}
       />
     </div>
   );
