@@ -1,16 +1,17 @@
 // src/services/serviciosTipos.api.js
-import { http } from "./http";
+import http from "./http";
 
-const BASE = "/Servicios";
-
-export const ServiciosTiposApi = {
+// API para TIPOS de servicio
+export const ServiciosTiposAPI = {
   // GET /api/Servicios/tipos-servicio
-  getAll() {
-    return http.get(`${BASE}/tipos-servicio`);
+  getTiposServicio(signal) {
+    return http.get("/api/Servicios/tipos-servicio", { signal });
   },
 
   // GET /api/Servicios/tipos-servicio/{id}
-  getById(id) {
-    return http.get(`${BASE}/tipos-servicio/${id}`);
+  getTipoServicioById(id, signal) {
+    return http.get(`/api/Servicios/tipos-servicio/${id}`, { signal });
   },
 };
+
+export default ServiciosTiposAPI;

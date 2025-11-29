@@ -21,17 +21,17 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <AuthProvider>
       <UsuariosState>
         <PagosState>
-          <ServiciosState>
-            <MapaState>
-              <AmenidadesState>
-                <ReservasState>
+          <MapaState>
+            <AmenidadesState>
+              <ReservasState>
+                <ServiciosState>
                   <ReportesState>
                     <RouterProvider router={router} />
                   </ReportesState>
-                </ReservasState>
-              </AmenidadesState>
-            </MapaState>
-          </ServiciosState>
+                </ServiciosState>
+              </ReservasState>
+            </AmenidadesState>
+          </MapaState>
         </PagosState>
       </UsuariosState>
     </AuthProvider>

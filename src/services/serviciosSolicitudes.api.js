@@ -1,43 +1,48 @@
 // src/services/serviciosSolicitudes.api.js
-import { http } from "./http";
+import http from "./http";
 
-const BASE = "/Servicios";
-
-export const ServiciosSolicitudesApi = {
+// API para SOLICITUDES de servicio
+export const ServiciosSolicitudesAPI = {
   // POST /api/Servicios/solicitud
-  create(payload) {
-    return http.post(`${BASE}/solicitud`, payload);
+  crearSolicitudServicio(data) {
+    return http.post("/api/Servicios/solicitud", data);
   },
 
   // GET /api/Servicios/solicitudes
-  getAll() {
-    return http.get(`${BASE}/solicitudes`);
+  getSolicitudesServicios(signal) {
+    return http.get("/api/Servicios/solicitudes", { signal });
   },
 
   // GET /api/Servicios/solicitud/{id}
-  getById(id) {
-    return http.get(`${BASE}/solicitud/${id}`);
+  getSolicitudServicioById(id, signal) {
+    return http.get(`/api/Servicios/solicitud/${id}`, { signal });
   },
 
   // GET /api/Servicios/solicitud/usuario/{usuarioId}
-  getByUsuario(usuarioId) {
-    return http.get(`${BASE}/solicitud/usuario/${usuarioId}`);
+  getSolicitudesServicioByUsuario(usuarioId, signal) {
+    return http.get(`/api/Servicios/solicitud/usuario/${usuarioId}`, {
+      signal,
+    });
   },
 
   // PUT /api/Servicios/solicitud/{id}/asignar
-  asignarPersona(id, personaAsignado) {
-    return http.put(`${BASE}/solicitud/${id}/asignar`, {
+  asignarSolicitudServicio(id, personaAsignado) {
+    return http.put(`/api/Servicios/solicitud/${id}/asignar`, {
       personaAsignado,
     });
   },
 
   // PUT /api/Servicios/solicitud/{id}/estado
-  cambiarEstado(id, estado) {
-    return http.put(`${BASE}/solicitud/${id}/estado`, { estado });
+  actualizarEstadoSolicitud(id, estado) {
+    return http.put(`/api/Servicios/solicitud/${id}/estado`, { estado });
   },
 
   // PUT /api/Servicios/solicitud/{id}/completar
-  completar(id, notasAdmin) {
-    return http.put(`${BASE}/solicitud/${id}/completar`, { notasAdmin });
+  completarSolicitudServicio(id, notasAdmin) {
+    return http.put(`/api/Servicios/solicitud/${id}/completar`, {
+      notasAdmin,
+    });
   },
 };
+
+export default ServiciosSolicitudesAPI;

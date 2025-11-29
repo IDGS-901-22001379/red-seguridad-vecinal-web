@@ -1,13 +1,16 @@
 // src/pages/servicios/ServicioForm.jsx
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import ServiciosContext from "../../context/Servicios/ServiciosContext";
 
 export default function ServicioForm({
   open,
   onClose,
   onSubmit,
-  tiposServicio = [],
+  tiposServicio = [], // por si el padre manda algo, lo usamos como respaldo
   initial,
 }) {
+  const { tipos, cargarTiposServicio } = useContext(ServiciosContext);
+
   const [form, setForm] = useState({
     tipoServicioID: "",
     nombreEncargado: "",
@@ -19,9 +22,22 @@ export default function ServicioForm({
 
   const [errors, setErrors] = useState({});
 
-  // Cargar datos cuando sea edición
+  // Lista final de tipos: primero los del contexto, si no hay usamos los props
+  const tiposLista = (tipos && tipos.length ? tipos : tiposServicio) ?? [];
+
+  // Cuando se abre el modal, pedimos los tipos al contexto
   useEffect(() => {
+    if (!open) return;
+    // siempre es seguro pedirlos, el context ya maneja el estado de carga
+    cargarTiposServicio();
+  }, [open, cargarTiposServicio]);
+
+  // Cuando se abre el modal o cambia `initial`, reseteamos el formulario
+  useEffect(() => {
+    if (!open) return;
+
     if (initial) {
+      // MODO EDITAR
       setForm({
         tipoServicioID: initial.tipoServicioID
           ? String(initial.tipoServicioID)
@@ -34,11 +50,9 @@ export default function ServicioForm({
           typeof initial.disponible === "boolean" ? initial.disponible : true,
       });
     } else {
+      // MODO NUEVO
       setForm({
-        tipoServicioID:
-          tiposServicio.length > 0
-            ? String(tiposServicio[0].tipoServicioID)
-            : "",
+        tipoServicioID: "",
         nombreEncargado: "",
         telefono: "",
         email: "",
@@ -46,8 +60,24 @@ export default function ServicioForm({
         disponible: true,
       });
     }
+
     setErrors({});
-  }, [initial, tiposServicio, open]);
+  }, [open, initial]);
+
+  // Si es NUEVO y ya hay tipos cargados, asignar el primero SOLO una vez
+  useEffect(() => {
+    if (!open) return;
+    if (initial) return;
+    if (!tiposLista.length) return;
+
+    setForm((f) => {
+      if (f.tipoServicioID) return f; // ya tiene uno
+      return {
+        ...f,
+        tipoServicioID: String(tiposLista[0].tipoServicioID),
+      };
+    });
+  }, [open, initial, tiposLista]);
 
   if (!open) return null;
 
@@ -76,7 +106,6 @@ export default function ServicioForm({
     evt.preventDefault();
     if (!validate()) return;
 
-    // Adaptar a payload esperado por la API
     const payload = {
       tipoServicioID: Number(form.tipoServicioID),
       nombreEncargado: form.nombreEncargado.trim(),
@@ -117,7 +146,7 @@ export default function ServicioForm({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">Selecciona una opción</option>
-              {tiposServicio.map((t) => (
+              {tiposLista.map((t) => (
                 <option key={t.tipoServicioID} value={t.tipoServicioID}>
                   {t.nombre}
                 </option>

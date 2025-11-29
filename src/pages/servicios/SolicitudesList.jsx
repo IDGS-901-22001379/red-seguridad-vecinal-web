@@ -1,158 +1,233 @@
 // src/pages/servicios/SolicitudesList.jsx
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import ServiciosContext from "../../context/Servicios/ServiciosContext";
 import AsignacionForm from "./AsignacionForm";
+import EstadoSolicitudPill from "./EstadoSolicitudPill";
 
 export default function SolicitudesList() {
   const {
     solicitudes,
-    personalMantenimiento,
+    personal,
     loading,
     error,
     cargarSolicitudes,
     cargarPersonalMantenimiento,
     asignarSolicitud,
-    cambiarEstadoSolicitud,
+    actualizarEstadoSolicitud,
     completarSolicitud,
-    clearError,
   } = useContext(ServiciosContext);
 
+  const [busqueda, setBusqueda] = useState("");
   const [openAsignacion, setOpenAsignacion] = useState(false);
-  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
+  const [solicitudSel, setSolicitudSel] = useState(null);
 
   useEffect(() => {
     cargarSolicitudes();
     cargarPersonalMantenimiento();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cargarSolicitudes, cargarPersonalMantenimiento]);
 
-  const abrirAsignacion = (solicitud) => {
-    setSolicitudSeleccionada(solicitud);
+  const rowsFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return solicitudes || [];
+    return (solicitudes || []).filter((s) => {
+      const usuario = (s.nombreUsuario || "").toLowerCase();
+      const tipo = (s.tipoServicioNombre || "").toLowerCase();
+      const desc = (s.descripcion || "").toLowerCase();
+      const estado = (s.estado || "").toLowerCase();
+      const asignado = (s.nombreAsignado || "").toLowerCase();
+      return (
+        usuario.includes(q) ||
+        tipo.includes(q) ||
+        desc.includes(q) ||
+        estado.includes(q) ||
+        asignado.includes(q)
+      );
+    });
+  }, [busqueda, solicitudes]);
+
+  const handleAbrirAsignar = (row) => {
+    setSolicitudSel(row);
     setOpenAsignacion(true);
   };
 
-  const handleAsignar = async (personaAsignado) => {
-    if (!solicitudSeleccionada) return;
-    await asignarSolicitud(solicitudSeleccionada.solicitudID, personaAsignado);
+  const handleAsignar = async (solicitudID, personaAsignado) => {
+    await asignarSolicitud(solicitudID, personaAsignado);
     setOpenAsignacion(false);
-    setSolicitudSeleccionada(null);
+    setSolicitudSel(null);
   };
 
-  const handleCambioEstado = async (solicitud, nuevoEstado) => {
-    await cambiarEstadoSolicitud(solicitud.solicitudID, nuevoEstado);
+  const handleMarcarCompletado = async (row) => {
+    if (row.estado && row.estado.toLowerCase() === "completado") return;
+
+    const ok = window.confirm("¿Marcar esta solicitud como completada?");
+    if (!ok) return;
+
+    await completarSolicitud(row.solicitudID, {
+      notasAdmin: row.notasAdmin || "",
+    });
   };
 
-  const handleCompletar = async (solicitud) => {
-    const notas = window.prompt(
-      "Notas del administrador (opcional):",
-      solicitud.notasAdmin ?? ""
-    );
-    await completarSolicitud(solicitud.solicitudID, notas ?? "");
+  const handleCambiarEstado = async (row, nuevo) => {
+    if (row.estado === nuevo) return;
+    await actualizarEstadoSolicitud(row.solicitudID, nuevo);
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold text-slate-800">
-          Solicitudes de servicio
-        </h1>
+    <div className="px-6 py-6">
+      {/* Encabezado principal */}
+      <div className="flex items-start justify-between mb-5 gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            Solicitudes de servicio
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Revisa y controla el estado de las solicitudes hechas por los
+            residentes.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Buscador */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white rounded-full shadow-sm border border-slate-200">
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por usuario, tipo, estado o asignado"
+              className="text-sm outline-none border-none bg-transparent placeholder:text-slate-400 w-72"
+            />
+            <span className="text-slate-400 text-lg" aria-hidden>
+              🔍
+            </span>
+          </div>
+        </div>
       </div>
 
-      {loading && (
-        <p className="text-sm text-slate-500">Cargando información...</p>
-      )}
-
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded flex justify-between">
-          <span>{error}</span>
-          <button
-            onClick={clearError}
-            className="text-xs underline underline-offset-2"
-          >
-            cerrar
-          </button>
+        <div className="mb-3 rounded-xl bg-red-50 border border-red-100 px-4 py-2 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      <div className="overflow-x-auto bg-white shadow-sm rounded-lg">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="px-3 py-2 text-left font-semibold">ID</th>
-              <th className="px-3 py-2 text-left font-semibold">UsuarioID</th>
-              <th className="px-3 py-2 text-left font-semibold">
-                Tipo servicio
-              </th>
-              <th className="px-3 py-2 text-left font-semibold">Descripción</th>
-              <th className="px-3 py-2 text-left font-semibold">Urgencia</th>
-              <th className="px-3 py-2 text-left font-semibold">Fecha pref.</th>
-              <th className="px-3 py-2 text-left font-semibold">Estado</th>
-              <th className="px-3 py-2 text-left font-semibold">Asignado</th>
-              <th className="px-3 py-2 text-left font-semibold">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(!solicitudes || solicitudes.length === 0) && (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="px-3 py-3 text-center text-slate-500"
-                >
-                  No hay solicitudes registradas.
-                </td>
+      {/* Tabla */}
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-100">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-base">
+            <thead>
+              <tr className="bg-emerald-700 text-white text-left">
+                <th className="px-5 py-3 font-semibold whitespace-nowrap">
+                  Usuario
+                </th>
+                <th className="px-5 py-3 font-semibold whitespace-nowrap">
+                  Tipo de servicio
+                </th>
+                <th className="px-5 py-3 font-semibold whitespace-nowrap">
+                  Urgencia
+                </th>
+                <th className="px-5 py-3 font-semibold whitespace-nowrap">
+                  Estado
+                </th>
+                <th className="px-5 py-3 font-semibold whitespace-nowrap">
+                  Asignado a
+                </th>
+                <th className="px-5 py-3 font-semibold text-right">Acciones</th>
               </tr>
-            )}
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-slate-500"
+                  >
+                    Cargando solicitudes...
+                  </td>
+                </tr>
+              )}
 
-            {solicitudes?.map((s) => (
-              <tr key={s.solicitudID} className="border-t">
-                <td className="px-3 py-2">{s.solicitudID}</td>
-                <td className="px-3 py-2">{s.usuarioID}</td>
-                <td className="px-3 py-2">{s.tipoServicioID}</td>
-                <td className="px-3 py-2 max-w-xs truncate">{s.descripcion}</td>
-                <td className="px-3 py-2">{s.urgencia}</td>
-                <td className="px-3 py-2">{s.fechaPreferida?.slice(0, 10)}</td>
-                <td className="px-3 py-2">{s.estado}</td>
-                <td className="px-3 py-2">
-                  {s.personaAsignado ? `#${s.personaAsignado}` : "Sin asignar"}
-                </td>
-                <td className="px-3 py-2 space-x-2">
-                  <button
-                    onClick={() => abrirAsignacion(s)}
-                    className="text-xs px-2 py-1 rounded bg-sky-500 text-white hover:bg-sky-600"
+              {!loading && rowsFiltradas.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-slate-500"
                   >
-                    Asignar
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleCambioEstado(
-                        s,
-                        s.estado === "Pendiente" ? "En proceso" : "Pendiente"
-                      )
+                    No se encontraron solicitudes.
+                  </td>
+                </tr>
+              )}
+
+              {!loading &&
+                rowsFiltradas.map((row, idx) => (
+                  <tr
+                    key={row.solicitudID}
+                    className={
+                      idx % 2 === 0
+                        ? "bg-white"
+                        : "bg-emerald-50/40 hover:bg-emerald-50"
                     }
-                    className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
                   >
-                    Cambiar estado
-                  </button>
-                  <button
-                    onClick={() => handleCompletar(s)}
-                    className="text-xs px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
-                    Completar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <td className="px-5 py-3 whitespace-nowrap font-semibold text-emerald-900">
+                      {row.nombreUsuario}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      {row.tipoServicioNombre}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-700">
+                        {row.urgencia}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      <EstadoSolicitudPill estado={row.estado} />
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      {row.nombreAsignado || "Sin asignar"}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      <div className="flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleAbrirAsignar(row)}
+                          className="rounded-full bg-emerald-600 text-white text-sm font-semibold px-4 py-2 hover:bg-emerald-700"
+                        >
+                          Detalles
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCambiarEstado(row, "En proceso")}
+                          className="rounded-full bg-sky-100 text-sky-800 text-sm font-semibold px-4 py-2 hover:bg-sky-200"
+                        >
+                          En proceso
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarcarCompletado(row)}
+                          disabled={
+                            row.estado &&
+                            row.estado.toLowerCase() === "completado"
+                          }
+                          className="rounded-full bg-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-2 hover:bg-emerald-200 disabled:opacity-60 disabled:cursor-default"
+                        >
+                          Completar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* Modal de asignación / detalles */}
       <AsignacionForm
         open={openAsignacion}
         onClose={() => {
           setOpenAsignacion(false);
-          setSolicitudSeleccionada(null);
+          setSolicitudSel(null);
         }}
-        personal={personalMantenimiento}
+        solicitud={solicitudSel}
+        personal={personal}
         onSubmit={handleAsignar}
       />
     </div>

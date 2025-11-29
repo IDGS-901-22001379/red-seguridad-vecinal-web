@@ -1,26 +1,11 @@
 // src/services/serviciosCargosMantenimiento.api.js
-import { http } from "./http";
+import http from "./http";
 
-const BASE = "/Servicios/cargos/mantenimiento";
-
-export const ServiciosCargosMantenimientoApi = {
-  // GET /api/Servicios/cargos/mantenimiento
-  getAll() {
-    return http.get(BASE);
+export const ServiciosCargosMantenimientoAPI = {
+  getCargosMantenimiento(signal) {
+    return http.get("/api/Servicios/cargos-mantenimiento", { signal });
   },
-
-  // GET /api/Servicios/cargos/mantenimiento/usuario/{usuarioId}
-  getByUsuario(usuarioId) {
-    return http.get(`${BASE}/usuario/${usuarioId}`);
-  },
-
-  // POST /api/Servicios/cargos/mantenimiento
-  create(payload) {
-    return http.post(BASE, payload);
-  },
-
-  // PUT /api/Servicios/cargos/mantenimiento/{id}
-  update(id, payload) {
-    return http.put(`${BASE}/${id}`, payload);
-  },
+  // agrega aquí los métodos que necesites...
 };
+
+export default ServiciosCargosMantenimientoAPI;
