@@ -1,4 +1,3 @@
-// src/pages/reportes/ReportesList.jsx
 import { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import ConfirmModal from "../../components/modals/ConfirmModal";
@@ -46,7 +45,6 @@ export default function ReportesList() {
     fetchReportes,
     fetchTiposReporte,
     marcarVisto,
-    cambiarAnonimato,
   } = useContext(ReportesContext);
 
   // modal de confirmación
@@ -102,17 +100,12 @@ export default function ReportesList() {
     // El contexto actualiza la lista
   };
 
-  const doToggleAnon = async (id, newValue) => {
-    await cambiarAnonimato(id, newValue);
-    // El contexto actualiza la lista
-  };
-
   // Handlers que abren el modal
   const onMarcarVisto = (r) => {
     const newVal = !r.visto;
     openConfirm({
       title: newVal ? "Marcar como atendido" : "Marcar como pendiente",
-      message: `¿Confirmas cambiar el estado del reporte “${r.titulo}” a ${
+      message: `¿Confirmas cambiar el estado del reporte "${r.titulo}" a ${
         newVal ? "Atendido" : "Pendiente"
       }?`,
       confirmText: "Sí, confirmar",
@@ -121,26 +114,6 @@ export default function ReportesList() {
           await doMarcarVisto(r.reporteID, newVal);
         } catch (e) {
           alert(e.message || "No se pudo actualizar el estado");
-        } finally {
-          closeConfirm();
-        }
-      },
-    });
-  };
-
-  const onToggleAnon = (r) => {
-    const newVal = !r.esAnonimo;
-    openConfirm({
-      title: newVal ? "Hacer anónimo" : "Quitar anonimato",
-      message: `¿Deseas ${
-        newVal ? "ocultar" : "mostrar"
-      } los datos del usuario en “${r.titulo}”?`,
-      confirmText: "Sí, confirmar",
-      onConfirm: async () => {
-        try {
-          await doToggleAnon(r.reporteID, newVal);
-        } catch (e) {
-          alert(e.message || "No se pudo cambiar el anonimato");
         } finally {
           closeConfirm();
         }
@@ -256,11 +229,6 @@ export default function ReportesList() {
                       </h3>
                       <EstadoBadge visto={r.visto} />
                       <TipoBadge tipo={r.tipoReporte} />
-                      {r.esAnonimo ? (
-                        <Badge className="bg-slate-50 text-slate-700 border-slate-200">
-                          Anónimo
-                        </Badge>
-                      ) : null}
                     </div>
 
                     <p className="mt-1 text-base text-slate-700 line-clamp-2">
@@ -323,18 +291,6 @@ export default function ReportesList() {
                       title="Cambiar estado"
                     >
                       {r.visto ? "Marcar como pendiente" : "Marcar atendido"}
-                    </button>
-
-                    {/* (Des)Anonimizar */}
-                    <button
-                      onClick={() => onToggleAnon(r)}
-                      className="px-4 py-2.5 text-base rounded-xl border border-[#F97316]
-                                 bg-[#F97316] text-white
-                                 active:scale-95 transition
-                                 focus:outline-none focus:ring-2 focus:ring-emerald-300"
-                      title="Alternar anonimato"
-                    >
-                      {r.esAnonimo ? "Quitar anonimato" : "Hacer anónimo"}
                     </button>
                   </div>
                 </div>

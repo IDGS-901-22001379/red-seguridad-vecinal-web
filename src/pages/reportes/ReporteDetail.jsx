@@ -1,7 +1,7 @@
-// src/pages/reportes/ReporteDetail.jsx
-import { useEffect, useMemo, useContext } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ReportesContext from "../../context/Reportes/ReportesContext";
+import CrearAvisoModal from "../../components/CrearAvisoModal";
 
 // Paleta base usada
 const COLORS = {
@@ -67,6 +67,7 @@ const Row = ({ label, value, mono }) => (
 export default function ReporteDetail() {
   const { id } = useParams();
   const nav = useNavigate();
+  const [mostrarModalAviso, setMostrarModalAviso] = useState(false);
 
   const {
     reporteActual: item,
@@ -74,7 +75,6 @@ export default function ReporteDetail() {
     error,
     fetchReporteById,
     marcarVisto,
-    cambiarAnonimato,
   } = useContext(ReportesContext);
 
   // Cargar detalle desde el contexto
@@ -97,16 +97,6 @@ export default function ReporteDetail() {
       // El contexto se encarga de actualizar el estado
     } catch (e) {
       alert(e.message || "No se pudo actualizar el estado");
-    }
-  };
-
-  const onAnon = async () => {
-    if (!item) return;
-    try {
-      await cambiarAnonimato(item.reporteID, !item.esAnonimo);
-      // El contexto se encarga de actualizar el estado
-    } catch (e) {
-      alert(e.message || "No se pudo cambiar el anonimato");
     }
   };
 
@@ -134,11 +124,6 @@ export default function ReporteDetail() {
               <Badge className="bg-slate-50 text-slate-700 border-slate-200">
                 {item.tipoReporte || "Tipo"}
               </Badge>
-              {item.esAnonimo && (
-                <Badge className="bg-slate-50 text-slate-700 border-slate-200">
-                  Anónimo
-                </Badge>
-              )}
             </div>
           )}
         </div>
@@ -174,11 +159,11 @@ export default function ReporteDetail() {
                 {item.visto ? "Marcar como pendiente" : "Marcar atendido"}
               </button>
               <button
-                onClick={onAnon}
-                className="px-3 py-2 text-sm rounded-lg border border-[#F97316] bg-[#F97316] text-white
+                onClick={() => setMostrarModalAviso(true)}
+                className="px-3 py-2 text-sm rounded-lg border border-[#8B5CF6] bg-[#8B5CF6] text-white
                            active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-emerald-300"
               >
-                {item.esAnonimo ? "Quitar anonimato" : "Hacer anónimo"}
+                Crear Aviso
               </button>
             </>
           )}
@@ -306,14 +291,9 @@ export default function ReporteDetail() {
                 <Badge className="bg-slate-50 text-slate-700 border-slate-200">
                   {item.tipoReporte}
                 </Badge>
-                {item.esAnonimo && (
-                  <Badge className="bg-slate-50 text-slate-700 border-slate-200">
-                    Anónimo
-                  </Badge>
-                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={onVisto}
                   className={`px-3 py-2 text-sm rounded-lg border active:scale-95 transition
@@ -327,11 +307,11 @@ export default function ReporteDetail() {
                   {item.visto ? "Marcar pendiente" : "Marcar atendido"}
                 </button>
                 <button
-                  onClick={onAnon}
-                  className="px-3 py-2 text-sm rounded-lg border border-[#F97316] bg-[#F97316] text-white
+                  onClick={() => setMostrarModalAviso(true)}
+                  className="px-3 py-2 text-sm rounded-lg border border-[#8B5CF6] bg-[#8B5CF6] text-white
                              active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-emerald-300"
                 >
-                  {item.esAnonimo ? "Quitar anonimato" : "Hacer anónimo"}
+                  Crear Aviso a la Comunidad
                 </button>
               </div>
             </Section>
@@ -364,6 +344,13 @@ export default function ReporteDetail() {
           </div>
         </div>
       )}
+
+      {/* Modal para crear avisos */}
+      <CrearAvisoModal
+        open={mostrarModalAviso}
+        onClose={() => setMostrarModalAviso(false)}
+        reporte={item}
+      />
     </div>
   );
 }
