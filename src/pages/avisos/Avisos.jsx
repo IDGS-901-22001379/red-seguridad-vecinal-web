@@ -1,253 +1,262 @@
 // src/pages/avisos/Avisos.jsx
-import { useEffect, useState, useCallback } from "react";
-import { AvisosAPI } from "../../services/avisos.api";
+import { useEffect, useState, useCallback, useContext, useMemo } from "react";
+import AvisosContext from "@/context/Avisos/AvisosContext";
 import AvisosList from "./AvisosList";
 import AvisoForm from "./AvisoForm";
+import AvisosFilters from "@/pages/avisos/AvisosFilters";
 
 export default function Avisos() {
-  const [cats, setCats] = useState([]); // [{ categoriaID, nombre, prioridad? }]
-  const [raw, setRaw] = useState([]); // lista cruda del backend
+  const {
+    avisos,
+    categorias,
+    loading,
+    error,
+    getAvisos,
+    getCategoriasAviso,
+    crearAviso,
+    actualizarAviso,
+    eliminarAviso,
+    clearError,
+  } = useContext(AvisosContext);
 
   const [query, setQuery] = useState({
     page: 1,
     pageSize: 10,
-    orden: "recientes", // "recientes" | "prioridad"
-    // q?: string
-    // categoriaId?: number
+    orden: "recientes",
+    q: "",
+    categoriaId: null,
+    fechaDesde: "",
+    fechaHasta: "",
   });
-
-  const [data, setData] = useState({
-    items: [],
-    total: 0,
-    page: 1,
-    pageSize: 10,
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  // ------ helpers de ordenamiento/filtrado/paginación en cliente ------
-  const catPriority = (catId) => {
-    const c = cats.find((x) => x.categoriaID === catId);
-    // Si el backend expone prioridad, úsala; si no, fallback por nombre:
-    if (c?.prioridad != null) return Number(c.prioridad);
-    const n = (c?.nombre || "").toLowerCase();
-    // Prioridad manual (puedes ajustarla)
-    if (n.includes("alerta")) return 1;
-    if (n.includes("evento")) return 2;
-    return 3; // AvisoGeneral / otros
+  // -------- PRIORIDAD DE CATEGORÍAS --------
+  const catPriority = useCallback(
+    (catId) => {
+      const c = categorias.find((x) => x.categoriaID === catId);
+      if (c?.prioridad != null) return Number(c.prioridad);
+
+      const n = (c?.nombre || "").toLowerCase();
+      if (n.includes("alerta")) return 1;
+      if (n.includes("evento")) return 2;
+      return 3;
+    },
+    [categorias]
+  );
+
+  // -------- FUNCIÓN PARA PARSEAR FECHAS DE FORMA SEGURA --------
+  const parseDate = (dateValue) => {
+    if (!dateValue) return null;
+    const d = new Date(dateValue);
+    return isNaN(d.getTime()) ? null : d;
   };
 
-  const applyClientQuery = useCallback(() => {
-    let arr = Array.isArray(raw) ? [...raw] : [];
+  // -------- FILTROS + ORDEN + PAGINACIÓN --------
+  const data = useMemo(() => {
+    let arr = [...(avisos || [])];
 
-    // filtro q (título/descripcion)
+    // Filtro por búsqueda
     if (query.q?.trim()) {
-      const q = query.q.trim().toLowerCase();
+      const q = query.q.toLowerCase();
       arr = arr.filter(
         (a) =>
-          (a.titulo || "").toLowerCase().includes(q) ||
-          (a.descripcion || "").toLowerCase().includes(q)
+          a.titulo?.toLowerCase().includes(q) ||
+          a.descripcion?.toLowerCase().includes(q)
       );
     }
 
-    // filtro por categoría
+    // Filtro por categoría
     if (query.categoriaId) {
       arr = arr.filter(
         (a) => Number(a.categoriaID) === Number(query.categoriaId)
       );
     }
 
-    // orden
-    if (query.orden === "prioridad") {
-      arr.sort(
-        (a, b) =>
-          catPriority(a.categoriaID) - catPriority(b.categoriaID) ||
-          new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion)
-      );
-    } else {
-      // recientes: fechaPublicacion DESC
-      arr.sort(
-        (a, b) => new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion)
-      );
+    // Filtro por rango de fechas
+    if (query.fechaDesde) {
+      const desde = parseDate(query.fechaDesde);
+      if (desde) {
+        arr = arr.filter((a) => {
+          const fechaAviso = parseDate(a.fechaPublicacion);
+          return fechaAviso && fechaAviso >= desde;
+        });
+      }
     }
 
-    // paginación
+    if (query.fechaHasta) {
+      const hasta = parseDate(query.fechaHasta);
+      if (hasta) {
+        hasta.setHours(23, 59, 59, 999); // Incluir todo el día
+        arr = arr.filter((a) => {
+          const fechaAviso = parseDate(a.fechaPublicacion);
+          return fechaAviso && fechaAviso <= hasta;
+        });
+      }
+    }
+
+    // Ordenamiento (usando fechaEvento porque fechaPublicacion es la misma para todos)
+    if (query.orden === "prioridad") {
+      arr.sort((a, b) => {
+        const prioA = catPriority(a.categoriaID);
+        const prioB = catPriority(b.categoriaID);
+
+        if (prioA !== prioB) return prioA - prioB;
+
+        // Si tienen la misma prioridad, ordenar por fecha de evento
+        const fechaA = parseDate(a.fechaEvento);
+        const fechaB = parseDate(b.fechaEvento);
+
+        if (!fechaA && !fechaB) return 0;
+        if (!fechaA) return 1;
+        if (!fechaB) return -1;
+
+        return fechaB - fechaA; // Más reciente primero
+      });
+    } else if (query.orden === "antiguos") {
+      // Más antiguos primero (por fecha de evento)
+      arr.sort((a, b) => {
+        const fechaA = parseDate(a.fechaEvento);
+        const fechaB = parseDate(b.fechaEvento);
+
+        if (!fechaA && !fechaB) return 0;
+        if (!fechaA) return 1;
+        if (!fechaB) return -1;
+
+        return fechaA - fechaB;
+      });
+    } else {
+      // recientes (default) - Más reciente primero (por fecha de evento)
+      arr.sort((a, b) => {
+        const fechaA = parseDate(a.fechaEvento);
+        const fechaB = parseDate(b.fechaEvento);
+
+        if (!fechaA && !fechaB) return 0;
+        if (!fechaA) return 1;
+        if (!fechaB) return -1;
+
+        return fechaB - fechaA;
+      });
+    }
+
     const total = arr.length;
     const start = (query.page - 1) * query.pageSize;
     const end = start + query.pageSize;
-    const items = arr.slice(start, end);
 
-    setData({ items, total, page: query.page, pageSize: query.pageSize });
-  }, [raw, query, cats]);
+    return {
+      items: arr.slice(start, end),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+  }, [avisos, categorias, query, catPriority]);
 
-  // ----------------- carga de datos -----------------
-  const loadCats = useCallback(async () => {
-    try {
-      const res = await AvisosAPI.getCategorias();
-      const list = Array.isArray(res) ? res : [];
-      // orden estable: prioridad -> nombre
-      const ordenadas = [...list].sort(
-        (a, b) =>
-          Number(a?.prioridad ?? 99) - Number(b?.prioridad ?? 99) ||
-          String(a?.nombre ?? "").localeCompare(String(b?.nombre ?? ""))
-      );
-      setCats(ordenadas);
-    } catch (e) {
-      console.error(e);
-      setCats([]);
-    }
+  // -------- CARGA INICIAL --------
+  useEffect(() => {
+    getCategoriasAviso();
+    getAvisos();
   }, []);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const arr = await AvisosAPI.listRaw();
-      setRaw(Array.isArray(arr) ? arr : []);
-    } catch (e) {
-      setError(e?.message || "Error cargando avisos");
-      setRaw([]);
-    } finally {
-      setLoading(false);
+  // -------- ACCIONES --------
+  const onSubmitForm = async (values) => {
+    const ok = editing
+      ? await actualizarAviso({ ...values, avisoID: editing.avisoID })
+      : await crearAviso(values);
+
+    if (ok) {
+      alert(editing ? "Aviso actualizado" : "Aviso creado");
+      setShowForm(false);
+      setEditing(null);
     }
-  }, []);
-
-  useEffect(() => {
-    loadCats();
-  }, [loadCats]);
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // recalcular vista cuando cambian raw/cats/query
-  useEffect(() => {
-    applyClientQuery();
-  }, [applyClientQuery]);
-
-  // ----------------- acciones -----------------
-  const onCreate = () => {
-    setEditing(null);
-    setShowForm(true);
-  };
-  const onEdit = (item) => {
-    setEditing(item);
-    setShowForm(true);
   };
 
   const onDelete = async (item) => {
     if (!confirm(`¿Eliminar el aviso "${item.titulo}"?`)) return;
-    try {
-      await AvisosAPI.remove(item.avisoID);
-      await loadData();
-      alert("Aviso eliminado");
-    } catch (e) {
-      alert(e?.message || "No se pudo eliminar");
-    }
+    const ok = await eliminarAviso(item.avisoID);
+    if (ok) alert("Aviso eliminado");
   };
 
-  const onSubmitForm = async (values) => {
-    try {
-      if (editing) {
-        await AvisosAPI.update(editing.avisoID, values); // PUT sin id en la ruta
-        alert("Aviso actualizado");
-      } else {
-        await AvisosAPI.create(values);
-        alert("Aviso creado");
-      }
-      setShowForm(false);
-      await loadData();
-    } catch (e) {
-      alert(e?.message || "Error al guardar");
-    }
-  };
+  const catMap = useMemo(
+    () =>
+      categorias.reduce((acc, c) => {
+        acc[c.categoriaID] = c.nombre;
+        return acc;
+      }, {}),
+    [categorias]
+  );
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Avisos (Admin)</h1>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Avisos</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Gestiona los avisos y notificaciones del sistema
+          </p>
+        </div>
         <button
-          onClick={onCreate}
-          className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition font-medium shadow-sm hover:shadow"
         >
           + Nuevo aviso
         </button>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 flex justify-between items-center">
+          <span className="text-sm">{error}</span>
+          <button
+            onClick={clearError}
+            className="text-rose-400 hover:text-rose-600 transition"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Filtros */}
-      <div className="grid md:grid-cols-4 gap-3 mb-4">
-        <input
-          className="border rounded-xl p-2"
-          placeholder="Buscar por título o descripción…"
-          value={query.q || ""}
-          onChange={(e) =>
-            setQuery((q) => ({ ...q, q: e.target.value, page: 1 }))
-          }
-        />
-        <select
-          className="border rounded-xl p-2"
-          value={query.categoriaId ?? ""}
-          onChange={(e) =>
-            setQuery((q) => ({
-              ...q,
-              categoriaId: e.target.value ? Number(e.target.value) : undefined,
-              page: 1,
-            }))
-          }
-        >
-          <option value="">Todas las categorías</option>
-          {cats.map((c) => (
-            <option key={c.categoriaID} value={c.categoriaID}>
-              {c.nombre}
-            </option>
-          ))}
-        </select>
-        <select
-          className="border rounded-xl p-2"
-          value={query.orden}
-          onChange={(e) =>
-            setQuery((q) => ({ ...q, orden: e.target.value, page: 1 }))
-          }
-        >
-          <option value="recientes">Orden: Recientes</option>
-          <option value="prioridad">Orden: Prioridad</option>
-        </select>
-        <select
-          className="border rounded-xl p-2"
-          value={query.pageSize}
-          onChange={(e) =>
-            setQuery((q) => ({
-              ...q,
-              pageSize: Number(e.target.value),
-              page: 1,
-            }))
-          }
-        >
-          {[5, 10, 20, 50].map((n) => (
-            <option key={n} value={n}>
-              {n} por página
-            </option>
-          ))}
-        </select>
+      <AvisosFilters
+        query={query}
+        setQuery={setQuery}
+        categorias={categorias}
+      />
+
+      {/* Contador de resultados */}
+      <div className="mb-4 text-sm text-gray-600">
+        Mostrando <span className="font-semibold">{data.items.length}</span> de{" "}
+        <span className="font-semibold">{data.total}</span> avisos
       </div>
 
+      {/* Lista de Avisos */}
       <AvisosList
         loading={loading}
         error={error}
         data={data}
-        onEdit={onEdit}
+        onEdit={(item) => {
+          setEditing(item);
+          setShowForm(true);
+        }}
         onDelete={onDelete}
         onPageChange={(page) => setQuery((q) => ({ ...q, page }))}
+        catMap={catMap}
       />
 
+      {/* Modal de Formulario */}
       {showForm && (
         <AvisoForm
           open={showForm}
-          onClose={() => setShowForm(false)}
+          onClose={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
           onSubmit={onSubmitForm}
-          categorias={cats}
+          categorias={categorias}
           initial={editing}
         />
       )}

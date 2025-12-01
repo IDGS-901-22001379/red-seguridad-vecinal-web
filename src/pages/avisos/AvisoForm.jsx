@@ -1,6 +1,7 @@
 // src/pages/avisos/AvisoForm.jsx
 import { useEffect, useMemo, useState, useCallback } from "react";
 import DateTimePickerES from "../../components/time/DateTimePickerES";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AvisoForm({
   open,
@@ -9,8 +10,9 @@ export default function AvisoForm({
   categorias = [],
   initial,
 }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
-    usuarioID: 0,
+    usuarioID: user.id,
     categoriaID: "", // string en el input
     titulo: "",
     descripcion: "",

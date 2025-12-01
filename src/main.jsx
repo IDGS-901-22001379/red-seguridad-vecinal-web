@@ -12,6 +12,8 @@ import QRState from "./context/QR/QRState";
 import InvitadosState from "./context/Invitados/InvitadosState";
 import AlertasState from "./context/Alertas/AlertasState";
 import PersonalState from "./context/Personal/PersonalState";
+import ReportesState from "./context/Reportes/ReportesState";
+import AvisosState from "./context/Avisos/AvisosState";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -20,6 +22,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <QRState>
           <InvitadosState>
             <AlertasState>
+              <AvisosState>
+              <ReportesState>
               <PersonalState>
         <PagosState>
           <MapaState>
@@ -27,6 +31,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           </MapaState>
         </PagosState>
         </PersonalState>
+        </ReportesState>
+        </AvisosState>
         </AlertasState>
         </InvitadosState>
         </QRState>
