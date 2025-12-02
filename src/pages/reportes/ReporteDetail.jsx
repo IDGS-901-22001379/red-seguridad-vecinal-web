@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ReportesContext from "../../context/Reportes/ReportesContext";
-import CrearAvisoModal from "../../components/CrearAvisoModal";
+import CategoriaSeleccionModal from "../../components/CategoriaSeleccionModal";
 
 // Paleta base usada
 const COLORS = {
@@ -67,7 +67,7 @@ const Row = ({ label, value, mono }) => (
 export default function ReporteDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const [mostrarModalAviso, setMostrarModalAviso] = useState(false);
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
 
   const {
     reporteActual: item,
@@ -75,14 +75,14 @@ export default function ReporteDetail() {
     error,
     fetchReporteById,
     marcarVisto,
+    marcarVistoConCategoria,
   } = useContext(ReportesContext);
 
-// En el useEffect de ReporteDetail, asegúrate que solo se ejecute cuando cambie el id:
-useEffect(() => {
-  if (id) {
-    fetchReporteById(Number(id));
-  }
-}, [id]); // Solo cuando cambie el ID
+  useEffect(() => {
+    if (id) {
+      fetchReporteById(Number(id));
+    }
+  }, [id]);
 
   const gmapsUrl = useMemo(() => {
     if (!item) return "#";
@@ -91,15 +91,27 @@ useEffect(() => {
 
   const onVisto = async () => {
     if (!item) return;
-    try {
-      await marcarVisto(item.reporteID, !item.visto);
+    
+    const newVal = !item.visto;
+    
+    if (newVal) {
+      // Para marcar como atendido, mostrar modal de categoría
+      setShowCategoriaModal(true);
+    } else {
+      // Para marcar como pendiente, confirmación simple
+      const confirmar = window.confirm(
+        `¿Marcar el reporte "${item.titulo}" como PENDIENTE?`
+      );
       
-      // SOLO si estamos marcando como ATENDIDO (no pendiente), abrir modal para crear aviso
-      if (!item.visto) { // Si actualmente está pendiente y lo vamos a marcar como atendido
-        setMostrarModalAviso(true);
+      if (confirmar) {
+        try {
+          await marcarVisto(item.reporteID, false);
+          alert("Reporte marcado como pendiente.");
+          fetchReporteById(Number(id));
+        } catch (e) {
+          alert("Error: " + (e.message || "No se pudo actualizar el estado"));
+        }
       }
-    } catch (e) {
-      alert(e.message || "No se pudo actualizar el estado");
     }
   };
 
@@ -127,6 +139,11 @@ useEffect(() => {
               <Badge className="bg-slate-50 text-slate-700 border-slate-200">
                 {item.tipoReporte || "Tipo"}
               </Badge>
+              {item.visto && (
+                <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                  Aviso creado
+                </Badge>
+              )}
             </div>
           )}
         </div>
@@ -209,6 +226,19 @@ useEffect(() => {
                   label="Domicilio"
                   value={`${item.calle || ""} ${item.numeroCasa || ""}`}
                 />
+                <Row
+                  label="Estado"
+                  value={
+                    <div className="flex items-center gap-2">
+                      <EstadoBadge visto={item.visto} />
+                      {item.visto && (
+                        <span className="text-sm text-blue-600">
+                          Aviso creado automáticamente
+                        </span>
+                      )}
+                    </div>
+                  }
+                />
               </div>
             </Section>
 
@@ -285,6 +315,23 @@ useEffect(() => {
                 <Badge className="bg-slate-50 text-slate-700 border-slate-200">
                   {item.tipoReporte}
                 </Badge>
+                {item.visto && (
+                  <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                    Aviso creado
+                  </Badge>
+                )}
+              </div>
+
+              <div className="mb-3">
+                {item.visto ? (
+                  <div className="text-sm text-emerald-700 bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                    Este reporte ha sido atendido y se ha creado un aviso para la comunidad.
+                  </div>
+                ) : (
+                  <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    Este reporte está pendiente de atención.
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-3">
@@ -332,11 +379,20 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Modal para crear avisos */}
-      <CrearAvisoModal
-        open={mostrarModalAviso}
-        onClose={() => setMostrarModalAviso(false)}
+      {/* Modal de selección de categoría */}
+      <CategoriaSeleccionModal
+        open={showCategoriaModal}
+        onClose={() => setShowCategoriaModal(false)}
         reporte={item}
+        onConfirm={async (categoriaID) => {
+          try {
+            await marcarVistoConCategoria(item.reporteID, categoriaID);
+            alert("Reporte marcado como atendido. Se ha creado un aviso para la comunidad.");
+            fetchReporteById(Number(id));
+          } catch (error) {
+            alert("Error: " + (error.message || "No se pudo completar la acción"));
+          }
+        }}
       />
     </div>
   );

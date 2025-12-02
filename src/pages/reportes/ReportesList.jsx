@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import ReportesContext from "../../context/Reportes/ReportesContext";
+import CategoriaSeleccionModal from "../../components/CategoriaSeleccionModal";
 
 const Badge = ({ children, className = "" }) => (
   <span className={"px-2.5 py-1.5 text-sm font-semibold rounded-full border " + className}>
@@ -31,7 +32,20 @@ const TipoBadge = ({ tipo }) => {
 
 export default function ReportesList() {
   const nav = useNavigate();
-  const { reportes, tiposReporte, loading, error, fetchReportes, fetchTiposReporte, marcarVisto } = useContext(ReportesContext);
+  const { 
+    reportes, 
+    tiposReporte, 
+    loading, 
+    error, 
+    fetchReportes, 
+    fetchTiposReporte, 
+    marcarVisto,
+    prepararMarcarComoAtendido,
+    showCategoriaModal,
+    pendingReporte,
+    confirmarMarcarComoAtendido,
+    setShowCategoriaModal
+  } = useContext(ReportesContext);
 
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState("all");
@@ -61,29 +75,32 @@ export default function ReportesList() {
       .sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
   }, [reportes, q, tipo, estado]);
 
-  // Función SIMPLE para marcar como visto
   const handleMarcarVisto = async (r) => {
     const newVal = !r.visto;
-    const confirmMessage = newVal 
-      ? `¿Marcar el reporte "${r.titulo}" como ATENDIDO?`
-      : `¿Marcar el reporte "${r.titulo}" como PENDIENTE?`;
     
-    if (!window.confirm(confirmMessage)) return;
-    
-    try {
-      await marcarVisto(r.reporteID, newVal);
+    if (newVal) {
+      // Para marcar como atendido, mostrar modal de categoría
+      const confirmar = window.confirm(
+        `¿Marcar el reporte "${r.titulo}" como ATENDIDO?\n\nSelecciona la categoría para el aviso que se creará.`
+      );
       
-      // SOLO si marcamos como ATENDIDO, preguntar por aviso
-      if (newVal) {
-        const crearAviso = window.confirm(
-          `Reporte marcado como atendido.\n\n¿Deseas crear un aviso para la comunidad sobre la resolución?\n\n(Serás redirigido al detalle para completar el aviso)`
-        );
-        if (crearAviso) {
-          nav(`/admin/reportes/${r.reporteID}`);
+      if (confirmar) {
+        prepararMarcarComoAtendido(r);
+      }
+    } else {
+      // Para marcar como pendiente, confirmación simple
+      const confirmar = window.confirm(
+        `¿Marcar el reporte "${r.titulo}" como PENDIENTE?`
+      );
+      
+      if (confirmar) {
+        try {
+          await marcarVisto(r.reporteID, false);
+          alert("Reporte marcado como pendiente.");
+        } catch (e) {
+          alert("Error: " + (e.message || "No se pudo actualizar el estado"));
         }
       }
-    } catch (e) {
-      alert("Error: " + (e.message || "No se pudo actualizar el estado"));
     }
   };
 
@@ -168,6 +185,11 @@ export default function ReportesList() {
                       <h3 className="text-lg md:text-xl font-semibold text-slate-800">{r.titulo}</h3>
                       <EstadoBadge visto={r.visto} />
                       <TipoBadge tipo={r.tipoReporte} />
+                      {r.visto && (
+                        <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                          Aviso creado
+                        </Badge>
+                      )}
                     </div>
                     <p className="mt-1 text-base text-slate-700 line-clamp-2">{r.descripcion}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-base text-slate-600">
@@ -210,6 +232,23 @@ export default function ReportesList() {
           </ul>
         )}
       </div>
+
+      {/* Modal de selección de categoría */}
+      <CategoriaSeleccionModal
+        open={showCategoriaModal}
+        onClose={() => setShowCategoriaModal(false)}
+        reporte={pendingReporte}
+        onConfirm={async (categoriaID) => {
+          if (pendingReporte) {
+            try {
+              await confirmarMarcarComoAtendido(categoriaID);
+              alert("Reporte marcado como atendido. Se ha creado un aviso para la comunidad.");
+            } catch (error) {
+              alert("Error: " + (error.message || "No se pudo completar la acción"));
+            }
+          }
+        }}
+      />
     </div>
   );
 }

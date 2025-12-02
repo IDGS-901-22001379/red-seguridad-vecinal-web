@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext } from "react";
 import ReportesContext from "../context/Reportes/ReportesContext";
 
 const CrearAvisoModal = ({ open, onClose, reporte }) => {
@@ -11,29 +11,18 @@ const CrearAvisoModal = ({ open, onClose, reporte }) => {
     fechaEvento: "",
   });
 
-  const hasLoaded = useRef(false); // Para evitar loops
-
-  // Cargar categorías SOLO UNA VEZ cuando se abre
+  // Cargar categorías cuando se abre
   useEffect(() => {
-    if (open && !hasLoaded.current) {
-      console.log("🔄 Cargando categorías...");
+    if (open) {
       fetchCategoriasAviso();
-      hasLoaded.current = true;
-    }
-    
-    // Reset cuando se cierra
-    if (!open) {
-      hasLoaded.current = false;
     }
   }, [open]);
 
-  // Pre-llenar con datos del reporte SOLO cuando cambia el reporte
+  // Pre-llenar con datos del reporte
   useEffect(() => {
     if (open && reporte && categoriasAviso.length > 0) {
-      console.log("📝 Prellenando con reporte:", reporte.reporteID);
-      
       setForm({
-        categoriaID: String(categoriasAviso[0].CategoriaID || categoriasAviso[0].categoriaID || "1"),
+        categoriaID: String(categoriasAviso[0]?.CategoriaID || categoriasAviso[0]?.categoriaID || "1"),
         titulo: `Resolución: ${reporte.titulo}`,
         descripcion: `Se ha atendido el reporte #${reporte.reporteID}:\n\n` +
                     `• Tipo: ${reporte.tipoReporte}\n` +
@@ -41,10 +30,10 @@ const CrearAvisoModal = ({ open, onClose, reporte }) => {
                     `• Ubicación: ${reporte.direccionTexto}\n` +
                     `• Fecha reporte: ${new Date(reporte.fechaCreacion).toLocaleDateString()}\n\n` +
                     `RESOLUCIÓN:\n[Describir aquí las acciones tomadas y recomendaciones para la comunidad]`,
-        fechaEvento: "",
+        fechaEvento: new Date().toISOString().slice(0, 16),
       });
     }
-  }, [reporte, open, categoriasAviso]); // Solo cuando cambian estos
+  }, [reporte, open, categoriasAviso]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,15 +44,27 @@ const CrearAvisoModal = ({ open, onClose, reporte }) => {
     }
 
     try {
+      // Obtener usuarioID del localStorage
+      let usuarioID = 9;
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          usuarioID = user.id || user.userID || user.usuarioID || 9;
+        }
+      } catch (error) {
+        console.error("Error al obtener usuario de localStorage:", error);
+      }
+      
       const avisoData = {
-        usuarioID: 1, // ID del admin
+        usuarioID: usuarioID,
         categoriaID: Number(form.categoriaID),
         titulo: form.titulo.trim(),
         descripcion: form.descripcion.trim(),
         fechaEvento: form.fechaEvento || null,
       };
       
-      console.log("📤 Creando aviso con:", avisoData);
+      console.log("Creando aviso con usuarioID:", usuarioID);
       
       await createAviso(avisoData);
       alert("Aviso creado exitosamente");
@@ -89,7 +90,7 @@ const CrearAvisoModal = ({ open, onClose, reporte }) => {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-slate-200">
           <h2 className="text-xl font-bold text-slate-800">
-            Crear Aviso a la Comunidad
+            Crear Aviso Manual
           </h2>
           {reporte && (
             <p className="text-sm text-slate-600 mt-1">

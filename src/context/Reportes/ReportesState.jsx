@@ -1,4 +1,4 @@
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 import ReportesContext from "./ReportesContext";
 import ReportesReducer, { initialState } from "./ReportesReducer";
 import ReportesAPI from "../../services/reportes.api";
@@ -29,6 +29,9 @@ import {
 
 export default function ReportesState({ children }) {
   const [state, dispatch] = useReducer(ReportesReducer, initialState);
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [pendingReporte, setPendingReporte] = useState(null);
+  const [selectedCategoriaID, setSelectedCategoriaID] = useState(null);
 
   // ---------------- ACCIONES PARA REPORTES ----------------
   const clearError = () => dispatch({ type: CLEAR_ERROR });
@@ -100,9 +103,29 @@ export default function ReportesState({ children }) {
     }
   };
 
-  const marcarVisto = async (id, visto = true) => {
-    await ReportesAPI.marcarVisto(id, visto);
-    dispatch({ type: MARCAR_VISTO_SUCCESS, payload: id });
+  const marcarVisto = async (id, visto = true, categoriaID = null) => {
+    try {
+      await ReportesAPI.marcarVisto(id, visto);
+      dispatch({ type: MARCAR_VISTO_SUCCESS, payload: id });
+      
+      // Si se marca como atendido (visto = true), crear aviso automáticamente
+      if (visto) {
+        const reporte = state.reportes.find(r => r.reporteID === id) || state.reporteActual;
+        if (reporte) {
+          // Pasar la categoríaID si se proporciona
+          await crearAvisoDesdeReporte(reporte, categoriaID);
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error("Error al marcar visto:", err);
+      throw err;
+    }
+  };
+
+  const marcarVistoConCategoria = async (id, categoriaID) => {
+    return await marcarVisto(id, true, categoriaID);
   };
 
   // ---------------- ACCIONES PARA AVISOS ----------------
@@ -132,7 +155,31 @@ export default function ReportesState({ children }) {
   const createAviso = async (data) => {
     dispatch({ type: CREATE_AVISO_REQUEST });
     try {
-      const created = await AvisosAPI.create(data);
+      // Obtener usuarioID del localStorage
+      let usuarioID = data.usuarioID;
+      if (!usuarioID) {
+        try {
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            usuarioID = user.id || user.userID || user.usuarioID;
+          }
+        } catch (error) {
+          console.error("Error al obtener usuario de localStorage:", error);
+        }
+      }
+      
+      // Usar 9 como fallback si no se obtuvo usuarioID
+      if (!usuarioID) {
+        usuarioID = 9;
+      }
+      
+      const payload = {
+        ...data,
+        usuarioID: Number(usuarioID)
+      };
+      
+      const created = await AvisosAPI.create(payload);
       dispatch({ type: CREATE_AVISO_SUCCESS, payload: created });
       return created;
     } catch (err) {
@@ -142,6 +189,78 @@ export default function ReportesState({ children }) {
         payload: err.message || "Error al crear el aviso",
       });
       throw err;
+    }
+  };
+
+  // Función auxiliar para crear aviso automáticamente desde un reporte
+  const crearAvisoDesdeReporte = async (reporte, categoriaID = null) => {
+    try {
+      // Obtener categorías
+      const categorias = await AvisosAPI.getCategorias();
+      
+      // Si no se proporciona categoriaID, usar la primera
+      let categoriaSeleccionada;
+      if (categoriaID) {
+        categoriaSeleccionada = categorias.find(cat => 
+          cat.CategoriaID === categoriaID || cat.categoriaID === categoriaID
+        );
+      }
+      
+      if (!categoriaSeleccionada && categorias.length > 0) {
+        categoriaSeleccionada = categorias[0];
+      }
+      
+      // Obtener usuarioID del localStorage
+      let usuarioIDParaAviso = 9;
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          usuarioIDParaAviso = user.id || user.userID || user.usuarioID || 9;
+        }
+      } catch (error) {
+        console.error("Error al obtener usuario de localStorage:", error);
+      }
+      
+      const avisoData = {
+        usuarioID: usuarioIDParaAviso,
+        categoriaID: categoriaSeleccionada?.CategoriaID || categoriaSeleccionada?.categoriaID || 1,
+        titulo: `Resolución: ${reporte.titulo}`,
+        descripcion: `Se ha atendido el reporte #${reporte.reporteID}:\n\n` +
+                    `• Tipo: ${reporte.tipoReporte}\n` +
+                    `• Descripción original: ${reporte.descripcion}\n` +
+                    `• Ubicación: ${reporte.direccionTexto}\n` +
+                    `• Fecha reporte: ${new Date(reporte.fechaCreacion).toLocaleDateString()}\n\n` +
+                    `RESOLUCIÓN:\nEl incidente ha sido atendido y resuelto por las autoridades correspondientes.`,
+        fechaEvento: new Date().toISOString().split('T')[0],
+      };
+      
+      const avisoCreado = await createAviso(avisoData);
+      console.log("Aviso creado automáticamente:", avisoCreado);
+      return avisoCreado;
+    } catch (error) {
+      console.error("No se pudo crear el aviso automáticamente:", error);
+      // No lanzamos error para no interrumpir el flujo principal
+    }
+  };
+
+  // Función para preparar la creación de aviso con selección de categoría
+  const prepararMarcarComoAtendido = (reporte) => {
+    setPendingReporte(reporte);
+    setShowCategoriaModal(true);
+  };
+
+  const confirmarMarcarComoAtendido = async (categoriaID) => {
+    if (!pendingReporte) return;
+    
+    try {
+      await marcarVistoConCategoria(pendingReporte.reporteID, categoriaID);
+      setShowCategoriaModal(false);
+      setPendingReporte(null);
+      return true;
+    } catch (error) {
+      console.error("Error al confirmar:", error);
+      return false;
     }
   };
 
@@ -157,9 +276,16 @@ export default function ReportesState({ children }) {
         fetchTiposReporte,
         createReporte,
         marcarVisto,
+        marcarVistoConCategoria,
+        prepararMarcarComoAtendido,
         fetchAvisos,
         fetchCategoriasAviso,
         createAviso,
+        crearAvisoDesdeReporte,
+        showCategoriaModal,
+        setShowCategoriaModal,
+        pendingReporte,
+        confirmarMarcarComoAtendido,
       }}
     >
       {children}
